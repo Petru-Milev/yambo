@@ -334,7 +334,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
                   do is1 = 1,n_spin
                     do is2 = is1,n_spin
                       is_xc = xc_spin_map1(is1,is2)
-                      sigma_pert(is_xc,i1, spin_iter) = real(drho(i1,is1,1)*drho(i1,is2,1)+drho(i1,is1,2)*drho(i1,is2,2)+drho(i1,is1,3)*drho(i1,is2,3),DP)
+                      sigma_pert(is_xc,i1, spin_iter) = real(drho(i1,is1,1)*drho(i1,is2,1) &
+                              +drho(i1,is1,2)*drho(i1,is2,2)+drho(i1,is1,3)*drho(i1,is2,3),DP)
                     end do
                   end do
                  end do 
@@ -350,7 +351,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
                do is1 = 1,n_spin
                  do is2 = is1,n_spin
                   is_xc = xc_spin_map1(is1,is2)
-                  sigma_pert(is_xc,i1,1) = real(drho(i1,is1,1)*drho(i1,is2,1)+drho(i1,is1,2)*drho(i1,is2,2)+drho(i1,is1,3)*drho(i1,is2,3),DP)
+                  sigma_pert(is_xc,i1,1) = real(drho(i1,is1,1)*drho(i1,is2,1) &
+                          +drho(i1,is1,2)*drho(i1,is2,2)+drho(i1,is1,3)*drho(i1,is2,3),DP)
                  end do
                end do
              end do
@@ -358,7 +360,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
             do is1=1,n_spin
               spin_rho_DP(is1,:)=spin_rho_DP(is1,:)*PERT_FAC
               !CHECK WHAT IS PASSED BY sigma_pert(1,1,is1) TODO
-              call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_pert(1,1,is1), v1rho_pert(1,1),v1sigma_pert(1,1))
+              call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_pert(1,1,is1),& 
+                                 v1rho_pert(1,1),v1sigma_pert(1,1))
               call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho,V_xc_pert_tmp)
               V_xc_pert(:,:,is1)=V_xc_pert_tmp(:,:)
               spin_rho_DP(is1,:)=spin_rho_DP(is1,:)/PERT_FAC
