@@ -274,7 +274,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
          call xc_f03_lda_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), v1rho(1,1))
          forall(i1=1:fft_size,i2=1:n_spin) V_xc(i1,i2) = V_xc(i1,i2) + real(v1rho(i2,i1),SP)
          if (l_Fxc_from_Vxc.and.ORDER==2) then
-           spin_rho_DP=spin_rho_DP*PERT_FAC
+           !spin_rho_DP=spin_rho_DP*PERT_FAC
            YAMBO_ALLOC(v1rho_pert,(n_spin,fft_size))
            do is1=1,n_spin
               spin_rho_DP(is1,:)=spin_rho_DP(is1,:)*PERT_FAC
@@ -399,34 +399,36 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  
 
  if (l_Fxc_from_Vxc.and.ORDER==2) then
-    if (n_spin==1) then
-      do ifft=1,fft_size
-        if (abs(spin_rho_DP(1,ifft))<1.E-7_DP) cycle
-        F_xc(ifft,1,1)=real( real(V_xc_pert(ifft,1,1)-V_xc(ifft,1),DP)/(spin_rho_DP(1,ifft)*(PERT_FAC-1._DP)),SP)
-      enddo
-    else if (n_spin==2) then 
-      do ifft=1,fft_size
-        if (abs(spin_rho_DP(1,ifft))<1.E-7_DP) cycle
-          do i1=1,n_spin
-            do i2=1,n_spin
-              F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(spin_rho_DP(i2,ifft)*(PERT_FAC-1._DP)),SP)
-            enddo
-          enddo
-      enddo
-      YAMBO_ALLOC(tmp, (fft_size))
-      !12 and 21 components should be equal, here we try to reduce numerical error 
-      !Can there exist systems or cases when they are not the same?
-      tmp=(F_xc(:,1,2)+F_xc(:,2,1))/2._SP 
-      F_xc(:,1,2)=tmp 
-      F_xc(:,2,1)=tmp 
-      YAMBO_FREE(tmp) 
-    else
-      call msg('s','Error n_spin is not 1 or 2') 
-    endif
+    !if (n_spin==1) then
+      !do ifft=1,fft_size
+        !if (abs(spin_rho_DP(1,ifft))<1.E-7_DP) cycle
+        !F_xc(ifft,1,1)=real( real(V_xc_pert(ifft,1,1)-V_xc(ifft,1),DP)/(spin_rho_DP(1,ifft)*(PERT_FAC-1._DP)),SP)
+      !enddo
+    !else if (n_spin==2) then 
+   do i1=1,n_spin
+     do i2=1,n_spin
+       do ifft=1, fft_size
+         if (abs(spin_rho_DP(i2,ifft))<1.E-7_DP) cycle
+         F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(spin_rho_DP(i2,ifft)*(PERT_FAC-1._DP)),SP)
+       enddo 
+     enddo
+   enddo
+   if (n_spin==2) then
+    YAMBO_ALLOC(tmp, (fft_size))
+    !12 and 21 components should be equal, here we try to reduce numerical error 
+    !Can there exist systems or cases when they are not the same?
+    tmp=(F_xc(:,1,2)+F_xc(:,2,1))/2._SP 
+    F_xc(:,1,2)=tmp 
+    F_xc(:,2,1)=tmp 
+    YAMBO_FREE(tmp)
+   endif 
+    !else
+      !call msg('s','Error n_spin is not 1 or 2') 
+    !endif
  endif !if (l_Fxc_from_Vxc.and.ORDER==2) 
 
 ! to Delete Start
-if (l_Fxc_from_Vxc.and.ORDER==2.and.n_spin==2) then
+if (ORDER==2) then
   ! DS: This is a testing statament to print the elements of Fxc
   !     It is not needed for the code
   open(10,file='Fxc.dat',status='unknown')
