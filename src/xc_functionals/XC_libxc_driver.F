@@ -57,7 +57,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  !
  real(SP) :: spin_rho_SP(fft_size,n_spin),rho(fft_size)
  real(DP) :: spin_rho_DP(n_spin,fft_size),rspts(fft_size)
- real(SP),allocatable:: drho(:,:,:),drho_tmp(:,:),V_xc_pert(:,:,:), V_xc_pert_tmp(:,:), tmp(:) 
+ real(SP),allocatable:: drho(:,:,:),drho_tmp(:,:),V_xc_pert(:,:,:), V_xc_pert_tmp(:,:), V_xc_pert_cd(:,:,:,:), tmp(:) 
  real(DP),allocatable:: sigma(:,:), sigma_pert(:,:,:)
  complex(SP), allocatable:: drho_cmplx(:,:)
  complex(SP), allocatable:: spin_rho_SP_cmplx(:), spin_rho_DP_cmplx(:)
@@ -262,6 +262,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
    !PERT_FAC=1.000001_DP
    ORDER_NOW=1
    YAMBO_ALLOC(V_xc_pert,(fft_size,n_spin,n_spin)) ! DS: first n_spin is for the diagonal elements of v_xc, the second is for the spin_up and spin_down perturbation
+   YAMBO_ALLOC(V_xc_pert_cd,(fft_size,n_spin,n_spin,2)) 
    V_xc_pert=0._SP
  endif
  do ixc = 1,2
@@ -280,8 +281,13 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
            do is1=1,n_spin
               spin_rho_DP(is1,:)=spin_rho_DP(is1,:)+PERT_FAC
               call xc_f03_lda_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), v1rho_pert(1,1))
-              forall(i1=1:fft_size, i2=1:n_spin) V_xc_pert(i1,i2,is1) = V_xc_pert(i1,i2,is1) + real(v1rho_pert(i2,i1),DP) !WHY SP?
-              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)-PERT_FAC 
+              !forall(i1=1:fft_size, i2=1:n_spin) V_xc_pert(i1,i2,is1) = V_xc_pert(i1,i2,is1) + real(v1rho_pert(i2,i1),SP) !WHY SP?
+              forall(i1=1:fft_size, i2=1:n_spin) V_xc_pert_cd(i1,i2,is1,1) = V_xc_pert_cd(i1,i2,is1,1) + real(v1rho_pert(i2,i1),SP) !WHY SP?
+              !spin_rho_DP(is1,:)=spin_rho_DP(is1,:)-PERT_FAC
+              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)-(2*PERT_FAC)
+              call xc_f03_lda_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), v1rho_pert(1,1))
+              forall(i1=1:fft_size, i2=1:n_spin) V_xc_pert_cd(i1,i2,is1,2) = V_xc_pert_cd(i1,i2,is1,2) + real(v1rho_pert(i2,i1),SP) !WHY SP?
+              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)+PERT_FAC
            enddo  
            !call xc_f03_lda_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), v1rho(1,1))
            !forall(i1=1:fft_size,i2=1:n_spin) V_xc_pert(i1,i2) = V_xc_pert(i1,i2) + real(v1rho(i2,i1),SP)
@@ -415,7 +421,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
      do i2=1,n_spin
        do ifft=1, fft_size
          if (abs(spin_rho_DP(i2,ifft))<1.E-7_DP) cycle
-         F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(PERT_FAC),SP)
+         F_xc(ifft,i1,i2)=real(real(V_xc_pert_cd(ifft,i1,i2,1)-V_xc_pert_cd(ifft,i1,i2,2),DP)/(2*PERT_FAC),SP)
+         !F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(PERT_FAC),SP)
          !F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(spin_rho_DP(i2,ifft)*(PERT_FAC-1._DP)),SP)
        enddo 
      enddo
@@ -471,6 +478,8 @@ endif
  if (present(EXX_FRACTION)) EXX_FRACTION = local_exx_fraction 
  !
  if (l_Fxc_from_Vxc) then 
+   YAMBO_FREE(V_xc_pert)
+   YAMBO_FREE(V_xc_pert_cd)
    YAMBO_FREE(V_xc_pert_tmp)
    YAMBO_FREE(sigma_pert)  
  endif 
