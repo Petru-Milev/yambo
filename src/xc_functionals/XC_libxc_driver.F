@@ -258,7 +258,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  ORDER_NOW=ORDER
  if (l_Fxc_from_Vxc.and.ORDER==2) then
    call msg('s',' Evaluating Fxc as numerical functional derivative of Vxc')
-   PERT_FAC=0.000001_DP
+   PERT_FAC=0.00000001_DP
    !PERT_FAC=1.000001_DP
    ORDER_NOW=1
    YAMBO_ALLOC(V_xc_pert,(fft_size,n_spin,n_spin)) ! DS: first n_spin is for the diagonal elements of v_xc, the second is for the spin_up and spin_down perturbation
@@ -415,7 +415,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
      do i2=1,n_spin
        do ifft=1, fft_size
          if (abs(spin_rho_DP(i2,ifft))<1.E-7_DP) cycle
-         F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(spin_rho_DP(i2,ifft)*(PERT_FAC-1._DP)),SP)
+         F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(PERT_FAC),SP)
+         !F_xc(ifft,i1,i2)=real(real(V_xc_pert(ifft,i1,i2)-V_xc(ifft,i1),DP)/(spin_rho_DP(i2,ifft)*(PERT_FAC-1._DP)),SP)
        enddo 
      enddo
    enddo

@@ -167,7 +167,8 @@ subroutine K_driver_init(what,iq,Ken,Xk)
  BS_K_is_ALDA=l_alda_fxc
  if (l_alda_fxc) then
    call parser('FxcLibxc',l_Fxc_Libxc)
-   l_Fxc_from_Vxc=(n_spin==1).and..not.l_Fxc_Libxc
+   !l_Fxc_from_Vxc=(n_spin==1).and..not.l_Fxc_Libxc
+   l_Fxc_from_Vxc=.not.l_Fxc_Libxc
  endif
 #if defined _CUDA
  if ( BS_K_is_alda.and. index(FXC_mode,"G-")>0 ) then
