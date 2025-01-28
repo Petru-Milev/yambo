@@ -79,7 +79,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  !===============================
  !
  call parser('FxcLibxc',l_Fxc_Libxc)
- l_Fxc_from_Vxc=(n_spin==1).and..not.l_Fxc_Libxc
+ l_Fxc_from_Vxc=.not.l_Fxc_Libxc
  !
  exsr=0._DP
  FUNCTIONALTMP=0
@@ -258,7 +258,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  ORDER_NOW=ORDER
  if (l_Fxc_from_Vxc.and.ORDER==2) then
    call msg('s',' Evaluating Fxc as numerical functional derivative of Vxc')
-   PERT_FAC=1.000001_DP
+   PERT_FAC=0.000001_DP
+   !PERT_FAC=1.000001_DP
    ORDER_NOW=1
    YAMBO_ALLOC(V_xc_pert,(fft_size,n_spin,n_spin)) ! DS: first n_spin is for the diagonal elements of v_xc, the second is for the spin_up and spin_down perturbation
    V_xc_pert=0._SP
@@ -277,10 +278,10 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
            !spin_rho_DP=spin_rho_DP*PERT_FAC
            YAMBO_ALLOC(v1rho_pert,(n_spin,fft_size))
            do is1=1,n_spin
-              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)*PERT_FAC
+              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)+PERT_FAC
               call xc_f03_lda_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), v1rho_pert(1,1))
-              forall(i1=1:fft_size, i2=1:n_spin) V_xc_pert(i1,i2,is1) = V_xc_pert(i1,i2,is1) + real(v1rho_pert(i2,i1),SP) !WHY SP?
-              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)/PERT_FAC 
+              forall(i1=1:fft_size, i2=1:n_spin) V_xc_pert(i1,i2,is1) = V_xc_pert(i1,i2,is1) + real(v1rho_pert(i2,i1),DP) !WHY SP?
+              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)-PERT_FAC 
            enddo  
            !call xc_f03_lda_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), v1rho(1,1))
            !forall(i1=1:fft_size,i2=1:n_spin) V_xc_pert(i1,i2) = V_xc_pert(i1,i2) + real(v1rho(i2,i1),SP)
@@ -325,7 +326,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
            !TO DELETE .and.n_spin==1 when the n_spin==1 case is implemented
            if (n_spin>1.and.n_spin==1) then  
               do spin_iter = 1,n_spin
-                spin_rho_DP(spin_iter,:)=spin_rho_DP(spin_iter,:)*PERT_FAC
+                spin_rho_DP(spin_iter,:)=spin_rho_DP(spin_iter,:)+PERT_FAC
                 spin_rho_DP_cmplx(:)=cmplx(spin_rho_DP(spin_iter,:), 0.0_DP,kind=DP)
                 call eval_Gradient(spin_rho_DP_cmplx,drho_cmplx,1,"density")
                 drho(:,spin_iter,:)=real(drho_cmplx)
@@ -339,7 +340,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
                     end do
                   end do
                  end do 
-                 spin_rho_DP(spin_iter,:)=spin_rho_DP(spin_iter,:)/PERT_FAC
+                 spin_rho_DP(spin_iter,:)=spin_rho_DP(spin_iter,:)-PERT_FAC
               end do 
             else
               YAMBO_ALLOC(drho_tmp,(fft_size,3))
@@ -358,13 +359,13 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
              end do
             end if
             do is1=1,n_spin
-              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)*PERT_FAC
+              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)+PERT_FAC
               !CHECK WHAT IS PASSED BY sigma_pert(1,1,is1) TODO
               call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_pert(1,1,is1),& 
                                  v1rho_pert(1,1),v1sigma_pert(1,1))
               call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho,V_xc_pert_tmp)
               V_xc_pert(:,:,is1)=V_xc_pert_tmp(:,:)
-              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)/PERT_FAC
+              spin_rho_DP(is1,:)=spin_rho_DP(is1,:)-PERT_FAC
             end do 
            YAMBO_FREE(drho_cmplx)
            YAMBO_FREE(v1sigma_pert)
@@ -408,6 +409,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
         !F_xc(ifft,1,1)=real( real(V_xc_pert(ifft,1,1)-V_xc(ifft,1),DP)/(spin_rho_DP(1,ifft)*(PERT_FAC-1._DP)),SP)
       !enddo
     !else if (n_spin==2) then 
+   !TODO To delete
+   call msg('s','Inside the numder loop')
    do i1=1,n_spin
      do i2=1,n_spin
        do ifft=1, fft_size
