@@ -858,8 +858,8 @@ if (ORDER==2) then
   do i1=1,fft_size
     write(10,*) i1, F_xc(i1,1,1), F_xc(i1,1,2), F_xc(i1,2,1), F_xc(i1,2,2)
   enddo
+  endif
   close(10)
-endif
 
 open(10,file='spin_rho_DP_final.dat',status='unknown')
 write(10,*) "spin_rho_DP"
