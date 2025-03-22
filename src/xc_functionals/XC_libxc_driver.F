@@ -57,9 +57,9 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  !
  real(SP) :: spin_rho_SP(fft_size,n_spin),rho(fft_size)
  real(DP) :: spin_rho_DP(n_spin,fft_size), spin_rho_DP_tmp(n_spin,fft_size), rspts(fft_size)
- real(SP),allocatable::   drho_tmp(:,:),V_xc_pert(:,:,:), tmp(:), tmp_2dim (:,:), drho(:,:,:), drho_pert(:,:,:),&
-  &                                   vxc_tmp(:,:)! ,vxc_tmp(:,:), V_xc_pert_tmp(:,:) 
- real(DP),allocatable::   sigma(:,:), sigma_pert(:,:,:,:), V_xc_pert_cd(:,:,:,:), sigma_tmp(:,:)
+ real(SP),allocatable::   drho_tmp(:,:),V_xc_pert(:,:,:), tmp(:), tmp_2dim (:,:), drho(:,:,:),&
+  &                                   vxc_tmp(:,:)! ,vxc_tmp(:,:), V_xc_pert_tmp(:,:), drho_pert(:,:,:)
+ real(DP),allocatable::   sigma(:,:), sigma_pert(:,:,:,:), V_xc_pert_cd(:,:,:,:), sigma_tmp(:,:), drho_pert(:,:,:)
  complex(SP), allocatable:: drho_cmplx(:,:) !complex(SP), allocatable
  complex(SP), allocatable:: spin_rho_SP_cmplx(:), spin_rho_DP_cmplx(:)
  !
@@ -301,8 +301,8 @@ endif
    !TODO put the perturbation factor in the input file?
    !TODO CHANGE IT NOW FOR THE TESTS
    !PERT_FAC=0.0000001_SP
-   PERT_FAC=0.1D-2
-   PERT_FAC_SIGMA=0.0000001_SP
+   PERT_FAC=0.1D-7
+   PERT_FAC_SIGMA=0.1D-7
    ORDER_NOW=1
    YAMBO_ALLOC(V_xc_pert,(fft_size,n_spin,n_spin)) 
    ! DS: first n_spin is for the diagonal elements of v_xc, the second is for the spin_up and spin_down perturbation
@@ -315,6 +315,7 @@ endif
    YAMBO_ALLOC(v1rho_pert,(n_spin,fft_size))
    YAMBO_ALLOC(v1sigma_pert,(xc_spin(1),fft_size))
    YAMBO_ALLOC(drho_pert,(fft_size,n_spin,3))
+   drho_pert = 0._DP
  endif
   !
  do ixc = 1,2
@@ -401,8 +402,12 @@ endif
                                   v1rho_pert(1,1),v1sigma_pert(1,1))
               call msg('s','Here 4.05')     
               f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:), DP)
+              !TODO add a division/multiplication by two here
               f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:), DP)
+              !up to here checked the vaues, theyr are good
               call msg('s','Here 4.1')
+              
+
               !call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho_pert,vxc_tmp(:,:)) 
               !returned \partial V_xc^{up} / \partial rho^{is1} and partial V_xc^{down} / \partial rho^{is1}
               !vxc_rho_pert(:,:,is1,1) = vxc_rho_pert(:,:,is1,1) + real(vxc_tmp(:,:))
@@ -418,8 +423,65 @@ endif
               !forall (i2=1:n_spin) f1rho(i2,:) = real(real(vxc_rho_pert(:,i1,i2,1) - vxc_rho_pert(:,i1,i2,2),DP)/(2*PERT_FAC),DP)
               f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:),DP),DP)/(2*PERT_FAC)
               f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:),DP),DP)/(2*PERT_FAC)
+              if (is1==1) then
+                open (13, file='v1rho_pert_loop_is1_minus_pert.dat', status='unknown')
+                write(13,*) 'v1rho_pert_loop_is1'
+                do ifft=1,fft_size
+                  write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                enddo
+                close(13)
+                open (13, file='v1sigma_pert_loop_is1_minus_pert.dat', status='unknown')
+                write(13,*) 'v1sigma_pert_loop_is1'
+                do ifft=1,fft_size
+                  write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                enddo
+                close(13)
+                !
+                open (13, file='f1rho_loop_is1.dat', status='unknown')
+                write(13,*) 'f1rho_loop_is1'
+                do ifft=1,fft_size
+                  write(13,*) ifft, f1rho(1,ifft), f1rho(2,ifft)
+                enddo
+                close(13)
+                open (13, file='f1sigma_loop_is1.dat', status='unknown')
+                write(13,*) 'f1rho_loop_is1'
+                do ifft=1,fft_size
+                  write(13,*) ifft, f1sigma(1,ifft), f1sigma(2,ifft), f1sigma(3,ifft)
+                enddo
+                close(13)
+                !
+              elseif (is1==2) then
+                !
+                open (13, file='v1rho_pert_loop_is2_minus_pert.dat', status='unknown')
+                write(13,*) 'v1rho_pert_loop_is2'
+                do ifft=1,fft_size
+                  write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                enddo
+                close(13)
+                open (13, file='v1sigma_pert_loop_is2_minus_pert.dat', status='unknown')
+                write(13,*) 'v1sigma_pert_loop_is2'
+                do ifft=1,fft_size
+                  write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                enddo
+                close(13)
+                !
+                open (13, file='f1rho_loop_is2.dat', status='unknown')
+                write(13,*) 'f1rho_loop_is2'
+                do ifft=1,fft_size
+                  write(13,*) ifft, f1rho(1,ifft), f1rho(2,ifft)
+                enddo
+                close(13)
+                open (13, file='f1sigma_loop_is2.dat', status='unknown')
+                write(13,*) 'f1rho_loop_is2'
+                do ifft=1,fft_size
+                  write(13,*) ifft, f1sigma(1,ifft), f1sigma(2,ifft), f1sigma(3,ifft)
+                enddo
+                close(13)
+              endif
               call msg('s','Here 4.15')
+              vxc_tmp(:,:) = 0._DP
               call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp(:,:))
+
               vxc_rho_pert(:,:,is1,1)=vxc_rho_pert(:,:,is1,1) + real(vxc_tmp(:,:))
 
 
@@ -440,73 +502,174 @@ endif
                     is_xc = xc_spin_map1(is1,is2)
                     f1rho = 0._DP
                     f1sigma = 0._DP
-                    !if (is_xc == 1) then 
-                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                    !else if (is_xc == 2) then
-                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    !else if (is_xc == 3) then
-                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    !end if
+                    v1rho_pert = 0._DP
+                    v1sigma_pert = 0._DP
+                    if (is_xc == 1) then 
+                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                    else if (is_xc == 2) then
+                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    else if (is_xc == 3) then
+                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    end if
                     !call msg('s','Here 5.1')
-                    !do i3 = 1,n_spin
-                    ! spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
-                    !  call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
-                    !  drho_pert(:,i3,:)=real(drho_cmplx)
-                    !end do
+                    do i3 = 1,n_spin
+                     spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
+                      call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
+                      drho_pert(:,i3,:)=real(drho_cmplx, DP)
+                    end do
                     !call msg('s','Here 5.2')
-                    !forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
+                    forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
+                    
+                    sigma_tmp(:,:) = sigma(:,:)
+                    sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
+                    & drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
                     !sigma_tmp(:,:) = sigma_pert(:,:,is_xc,1)
                     !call msg('s','Here 5.3')
-                    sigma_tmp(:,:) = sigma(:,:)
-                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
-                    call msg('s','Here 5.31')
+                    !sigma_tmp(:,:) = sigma(:,:)
+                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
+                    !call msg('s','Here 5.31')
                     call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
                     f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:))
                     f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:))
+
                     !call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1),& 
                     !                v1rho_pert(1,1),v1sigma_pert(1,1))
                     !call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho,vxc_tmp(:,:)) !wil return Vxc_tmp(fft, n_spin)
                     !call msg('s','Here 5.4')
                     !vxc_sigma_pert(:,:,is_xc,1)=vxc_sigma_pert(:,:,is_xc,1) + vxc_tmp(:,:)
 
-                    !if (is_xc == 1) then 
-                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
-                    !else if (is_xc == 2) then
-                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
-                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
-                    !else if (is_xc == 3) then
-                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
-                    !end if
+                    if (is_xc == 1) then 
+                      spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
+                    else if (is_xc == 2) then
+                      spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
+                      spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
+                    else if (is_xc == 3) then
+                      spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
+                    end if
 
-                    !do i3 = 1,n_spin
-                    !  spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
-                    !  call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
-                    !  drho_pert(:,i3,:)=real(drho_cmplx)
-                    !end do
-                    !forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
+                    do i3 = 1,n_spin
+                      spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
+                      call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
+                      drho_pert(:,i3,:)=real(drho_cmplx, DP)
+                    end do
+                    forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
                     sigma_tmp(:,:) = sigma(:,:)
-                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - PERT_FAC_SIGMA
+                    sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
+                    & drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
+                    !sigma_tmp(:,:) = sigma(:,:)
+                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - PERT_FAC_SIGMA
 
-                    call msg('s','Here 5.5')
+                    v1rho_pert = 0._DP
+                    v1sigma_pert = 0._DP
+
+                    !call msg('s','Here 5.5')
                     call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
                     f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(2*PERT_FAC_SIGMA)
                     f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(2*PERT_FAC_SIGMA)
+
+                    if (is_xc==1) then
+                      open (13, file='v1rho_pert_loop_is_xc_1_minus_pert.dat', status='unknown')
+                      write(13,*) 'v1rho_pert_loop_is_xc_is1'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                      enddo
+                      close(13)
+                      open (13, file='v1sigma_pert_loop_is_xc_1_minus_pert.dat', status='unknown')
+                      write(13,*) 'v1sigma_pert_loop_is1'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                      enddo
+                      close(13)
+                      !
+                      open (13, file='f1rho_loop_is_xc_1.dat', status='unknown')
+                      write(13,*) 'f1rho_loop_is1'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, f1rho(1,ifft), f1rho(2,ifft)
+                      enddo
+                      close(13)
+                      open (13, file='f1sigma_loop_is_xc_1.dat', status='unknown')
+                      write(13,*) 'f1rho_loop_is1'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, f1sigma(1,ifft), f1sigma(2,ifft), f1sigma(3,ifft)
+                      enddo
+                      close(13)
+                      !
+                    elseif (is_xc==2) then
+                      !
+                      open (13, file='v1rho_pert_loop_is_xc_2_minus_pert.dat', status='unknown')
+                      write(13,*) 'v1rho_pert_loop_is_xc_2'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                      enddo
+                      close(13)
+                      open (13, file='v1sigma_pert_loop_is_xc_2_minus_pert.dat', status='unknown')
+                      write(13,*) 'v1sigma_pert_loop_is2'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                      enddo
+                      close(13)
+                      !
+                      open (13, file='f1rho_loop_is_xc_2.dat', status='unknown')
+                      write(13,*) 'f1rho_loop_is2'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, f1rho(1,ifft), f1rho(2,ifft)
+                      enddo
+                      close(13)
+                      open (13, file='f1sigma_loop_is_xc_2.dat', status='unknown')
+                      write(13,*) 'f1rho_loop_is2'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, f1sigma(1,ifft), f1sigma(2,ifft), f1sigma(3,ifft)
+                      enddo
+                      close(13)
+                    elseif (is_xc==3) then
+                      !
+                      open (13, file='v1rho_pert_loop_is_xc_3_minus_pert.dat', status='unknown')
+                      write(13,*) 'v1rho_pert_loop_is_xc_3'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                      enddo
+                      close(13)
+                      open (13, file='v1sigma_pert_loop_is_xc_3_minus_pert.dat', status='unknown')
+                      write(13,*) 'v1sigma_pert_loop_is3'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                      enddo
+                      close(13)
+                      !
+                      open (13, file='f1rho_loop_is_xc_3.dat', status='unknown')
+                      write(13,*) 'f1rho_loop_is3'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, f1rho(1,ifft), f1rho(2,ifft)
+                      enddo
+                      close(13)
+                      open (13, file='f1sigma_loop_is_xc_3.dat', status='unknown')
+                      write(13,*) 'f1rho_loop_is3'
+                      do ifft=1,fft_size
+                        write(13,*) ifft, f1sigma(1,ifft), f1sigma(2,ifft), f1sigma(3,ifft)
+                      enddo
+                      close(13)
+                    endif
+
+
                     !call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho,vxc_tmp(:,:)) !wil return Vxc_tmp(fft, n_spin)\
+                    vxc_tmp(:,:) = 0._DP
                     call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp(:,:))
+                    write(*,*) 'vxc_tmp', vxc_tmp(1,1), vxc_tmp(1,2)
                     vxc_sigma_pert(:,:,is_xc,1)=vxc_sigma_pert(:,:,is_xc,1) + vxc_tmp(:,:)
-                    !vxc_sigma_pert(:,:,is_xc,2)=vxc_sigma_pert(:,:,is_xc,2) + vxc_tmp(:,:)
-                    !call msg('s','Here 5.6')
-                    !if (is_xc == 1) then 
-                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                    !else if (is_xc == 2) then
-                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    !else if (is_xc == 3) then
-                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    !end if
+                    write(*,*) 'vxc_sigma_pert', vxc_sigma_pert(1,1,is_xc,1), vxc_sigma_pert(1,2,is_xc,1)
+                    vxc_sigma_pert(:,:,is_xc,2)=vxc_sigma_pert(:,:,is_xc,2) + vxc_tmp(:,:)
+                    call msg('s','Here 5.6')
+                    if (is_xc == 1) then 
+                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                    else if (is_xc == 2) then
+                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    else if (is_xc == 3) then
+                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    end if
 
                     call msg('s','Here 6')
                 end do 
@@ -543,6 +706,14 @@ endif
  endif
  !
 
+ open (13, file='vxc_rho_pert.dat', status='unknown')
+ write(13,*) 'vxc_rho_pert'
+ do i2=1,fft_size
+   write(13,*) i2, vxc_rho_pert(i2,1,1,1), vxc_rho_pert(i2,1,2,1)
+   write(13,*) i2, vxc_rho_pert(i2,2,1,1), vxc_rho_pert(i2,2,2,1)
+   !write(13,*) i2, vxc_rho_pert(i2,i1,1,2), vxc_rho_pert(i2,i1,2,2)
+ enddo
+ close(13)
 
  if (l_Fxc_from_Vxc.and.ORDER==2) then
    if (any(fnctl(:)%family==XC_FAMILY_LDA)) then
@@ -575,6 +746,7 @@ endif
         !do i2=1,n_spin
           forall (ifft=1:fft_size, i3=1:n_spin) f1rho(i3,ifft) = real(vxc_rho_pert(ifft,i1,i3,1))
           forall (i3=1:xc_spin(1), ifft=1:fft_size) f1sigma(i3,ifft) = real(vxc_sigma_pert(ifft,i1,i3,1))
+          vxc_tmp(:,:) = 0._DP
           call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp)
           F_xc(:,i1,:) = vxc_tmp(:,:)          
         !enddo
@@ -603,14 +775,6 @@ endif
 
 
       if (i1==1) then 
-        open (13, file='vxc_rho_pert_i1.dat', status='unknown')
-        write(13,*) 'vxc_rho_pert'
-        do i2=1,fft_size
-          write(13,*) i2, vxc_rho_pert(i2,1,1,1), vxc_rho_pert(i2,1,2,1)
-          write(13,*) i2, vxc_rho_pert(i2,2,1,1), vxc_rho_pert(i2,2,2,1)
-          !write(13,*) i2, vxc_rho_pert(i2,i1,1,2), vxc_rho_pert(i2,i1,2,2)
-        enddo
-        close(13)
       elseif (i1==2) then
         open(14, file='vxc_rho_pert_i2.dat', status='unknown')
         write(14,*) 'vxc_rho_pert'
@@ -621,8 +785,8 @@ endif
         close(14)
       endif
 
-          
-        call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp) 
+        !vxc_tmp(:,:) = 0._DP
+        !call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp) 
         !call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp) 
         !
         !
