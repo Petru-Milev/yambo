@@ -860,6 +860,7 @@ if (ORDER==2) then
   enddo
   endif
   close(10)
+endif 
 
 open(10,file='spin_rho_DP_final.dat',status='unknown')
 write(10,*) "spin_rho_DP"
