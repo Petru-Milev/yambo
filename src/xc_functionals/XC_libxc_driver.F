@@ -850,6 +850,11 @@ if (ORDER==2) then
   !     It is not needed for the code
   open(10,file='Fxc.dat',status='unknown')
   write(10,*) 'Fxc'
+  if (n_spin==1) then
+    do i1=1,fft_size
+      write(10,*) i1, F_xc(i1,1,1)
+    enddo
+  else
   do i1=1,fft_size
     write(10,*) i1, F_xc(i1,1,1), F_xc(i1,1,2), F_xc(i1,2,1), F_xc(i1,2,2)
   enddo
