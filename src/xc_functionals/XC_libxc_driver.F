@@ -380,11 +380,13 @@ endif
          ! Yambo internal for V_xc
          call XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
          open (13, file='vxc_default.dat', status='unknown')
+         if (n_spin==2) then
          write(13,*) 'vxc_sigma_pert'
          do ifft=1,fft_size
            write(13,*) ifft, V_xc(ifft,1), V_xc(ifft,2)
          enddo
          close(13)
+          endif
 
 
          if (l_Fxc_from_Vxc.and.ORDER==2) then
@@ -423,6 +425,7 @@ endif
               !forall (i2=1:n_spin) f1rho(i2,:) = real(real(vxc_rho_pert(:,i1,i2,1) - vxc_rho_pert(:,i1,i2,2),DP)/(2*PERT_FAC),DP)
               f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:),DP),DP)/(2*PERT_FAC)
               f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:),DP),DP)/(2*PERT_FAC)
+              if (n_spin==2) then
               if (is1==1) then
                 open (13, file='v1rho_pert_loop_is1_minus_pert.dat', status='unknown')
                 write(13,*) 'v1rho_pert_loop_is1'
@@ -478,6 +481,7 @@ endif
                 enddo
                 close(13)
               endif
+              endif !if n_spin==2  
               call msg('s','Here 4.15')
               vxc_tmp(:,:) = 0._DP
               call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp(:,:))
@@ -569,7 +573,7 @@ endif
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
                     f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(2*PERT_FAC_SIGMA)
                     f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(2*PERT_FAC_SIGMA)
-
+                    if (n_spin==2) then
                     if (is_xc==1) then
                       open (13, file='v1rho_pert_loop_is_xc_1_minus_pert.dat', status='unknown')
                       write(13,*) 'v1rho_pert_loop_is_xc_is1'
@@ -652,15 +656,19 @@ endif
                       enddo
                       close(13)
                     endif
-
+                    endif !if n_spin==2
 
                     !call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho,vxc_tmp(:,:)) !wil return Vxc_tmp(fft, n_spin)\
                     vxc_tmp(:,:) = 0._DP
                     call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp(:,:))
+                    if (n_spin==2) then
                     write(*,*) 'vxc_tmp', vxc_tmp(1,1), vxc_tmp(1,2)
+                    endif
                     vxc_sigma_pert(:,:,is_xc,1)=vxc_sigma_pert(:,:,is_xc,1) + vxc_tmp(:,:)
+                    if (n_spin==2) then
                     write(*,*) 'vxc_sigma_pert', vxc_sigma_pert(1,1,is_xc,1), vxc_sigma_pert(1,2,is_xc,1)
-                    vxc_sigma_pert(:,:,is_xc,2)=vxc_sigma_pert(:,:,is_xc,2) + vxc_tmp(:,:)
+                    endif 
+                    !vxc_sigma_pert(:,:,is_xc,2) = vxc_sigma_pert(:,:,is_xc,2) + vxc_tmp(:,:)
                     call msg('s','Here 5.6')
                     if (is_xc == 1) then 
                       spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
@@ -706,6 +714,7 @@ endif
  endif
  !
 
+ if (n_spin==2) then
  open (13, file='vxc_rho_pert.dat', status='unknown')
  write(13,*) 'vxc_rho_pert'
  do i2=1,fft_size
@@ -714,6 +723,7 @@ endif
    !write(13,*) i2, vxc_rho_pert(i2,i1,1,2), vxc_rho_pert(i2,i1,2,2)
  enddo
  close(13)
+endif 
 
  if (l_Fxc_from_Vxc.and.ORDER==2) then
    if (any(fnctl(:)%family==XC_FAMILY_LDA)) then
@@ -751,7 +761,7 @@ endif
           F_xc(:,i1,:) = vxc_tmp(:,:)          
         !enddo
       enddo
-
+      if (n_spin==2) then 
       open (13, file='vxc_sigma_pert.dat', status='unknown')
       write(13,*) 'vxc_sigma_pert'
       do ifft=1,fft_size
@@ -759,6 +769,7 @@ endif
         write(13,*) ifft, vxc_sigma_pert(ifft,2,1,1), vxc_sigma_pert(ifft,2,2,1), vxc_sigma_pert(ifft,2,3,1)
       enddo
       close(13)
+      endif 
 
       do i1=1,n_spin
         !forall (i2=1:n_spin) f1rho(i2,:) = real(real(vxc_rho_pert(:,i1,i2,1) - vxc_rho_pert(:,i1,i2,2),DP)/(2*PERT_FAC),DP)
@@ -776,6 +787,7 @@ endif
 
       if (i1==1) then 
       elseif (i1==2) then
+        if (n_spin==2) then
         open(14, file='vxc_rho_pert_i2.dat', status='unknown')
         write(14,*) 'vxc_rho_pert'
         do i2=1,fft_size
@@ -783,6 +795,7 @@ endif
           !write(14,*) i2, vxc_rho_pert(i2,i1,1,2), vxc_rho_pert(i2,i1,2,2)
         enddo 
         close(14)
+        endif 
       endif
 
         !vxc_tmp(:,:) = 0._DP
@@ -795,6 +808,7 @@ endif
         !
         !
         !
+        if (n_spin==2) then
         if (i1==1) then 
           open (13, file='file_f1rho.dat', status='unknown')
           write(13,*) 'F1rho'
@@ -822,6 +836,7 @@ endif
             write(12,*) i2, vxc_tmp(i2,1), vxc_tmp(i2,2)
           enddo
           close(12)
+        endif 
         endif 
       enddo
    else 
