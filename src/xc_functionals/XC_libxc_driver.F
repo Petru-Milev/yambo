@@ -80,8 +80,9 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  ! Convert and Initialize
  !===============================
  !
- call parser('FxcLibxc',l_Fxc_Libxc)
- l_Fxc_from_Vxc=.not.l_Fxc_Libxc
+ !call parser('FxcLibxc',l_Fxc_Libxc)
+ !call parser('FxcFromVxc',l_Fxc_from_Vxc)
+ !l_Fxc_from_Vxc=.not.l_Fxc_Libxc
  !
  l_Fxc_from_Vxc=.TRUE.
  l_Fxc_Libxc=.FALSE.
@@ -500,6 +501,7 @@ endif
             
             ! Here we perturn only the sigma, without perturbing the density
             !do spin_iter = 1,n_spin ! \partial V_xc^{spin_iter} / \partial sigma^{is1,is2} - notation used from the notes
+            !HERE SPIN
               call msg('s','Here 5')
               do is1=1,n_spin
                 do is2=is1,n_spin
@@ -508,35 +510,81 @@ endif
                     f1sigma = 0._DP
                     v1rho_pert = 0._DP
                     v1sigma_pert = 0._DP
-                    if (is_xc == 1) then 
-                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                    else if (is_xc == 2) then
-                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    else if (is_xc == 3) then
-                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    end if
+                    !if (is_xc == 1) then 
+                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                    !else if (is_xc == 2) then
+                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    !else if (is_xc == 3) then
+                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    !end if
                     !call msg('s','Here 5.1')
-                    do i3 = 1,n_spin
-                     spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
-                      call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
-                      drho_pert(:,i3,:)=real(drho_cmplx, DP)
-                    end do
+                    !do i3 = 1,n_spin
+                    ! spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
+                    !  call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
+                    !  drho_pert(:,i3,:)=real(drho_cmplx, DP)
+                    !end do
                     !call msg('s','Here 5.2')
-                    forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
+                    !forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
                     
-                    sigma_tmp(:,:) = sigma(:,:)
-                    sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
-                    & drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
+                    !sigma_tmp(:,:) = sigma(:,:)
+                    !sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
+                    !& drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
                     !sigma_tmp(:,:) = sigma_pert(:,:,is_xc,1)
                     !call msg('s','Here 5.3')
-                    !sigma_tmp(:,:) = sigma(:,:)
-                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
+                    sigma_tmp(:,:) = sigma(:,:)
+                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
                     !call msg('s','Here 5.31')
                     call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
                     f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:))
                     f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:))
+
+                    if (n_spin==2) then
+                      if (is_xc==1) then
+                        open (13, file='v1rho_pert_loop_is_xc_1_minus_pert.dat', status='unknown')
+                        write(13,*) 'v1rho_pert_loop_is_xc_is1'
+                        do ifft=1,fft_size
+                          write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                        enddo
+                        close(13)
+                        open (13, file='v1sigma_pert_loop_is_xc_1_plus_pert.dat', status='unknown')
+                        write(13,*) 'v1sigma_pert_loop_is1'
+                        do ifft=1,fft_size
+                          write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                        enddo
+                        close(13)
+                      elseif (is_xc==2) then
+                        !
+                        open (13, file='v1rho_pert_loop_is_xc_2_plus_pert.dat', status='unknown')
+                        write(13,*) 'v1rho_pert_loop_is_xc_2'
+                        do ifft=1,fft_size
+                          write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                        enddo
+                        close(13)
+                        open (13, file='v1sigma_pert_loop_is_xc_2_plus_pert.dat', status='unknown')
+                        write(13,*) 'v1sigma_pert_loop_is2'
+                        do ifft=1,fft_size
+                          write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                        enddo
+                        close(13)
+                      elseif (is_xc==3) then
+                        !
+                        open (13, file='v1rho_pert_loop_is_xc_3_plus_pert.dat', status='unknown')
+                        write(13,*) 'v1rho_pert_loop_is_xc_3'
+                        do ifft=1,fft_size
+                          write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                        enddo
+                        close(13)
+                        open (13, file='v1sigma_pert_loop_is_xc_3_plus_pert.dat', status='unknown')
+                        write(13,*) 'v1sigma_pert_loop_is3'
+                        do ifft=1,fft_size
+                          write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                        enddo
+                        close(13)
+                      endif
+                      endif !if n_spin==2
+
 
                     !call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1),& 
                     !                v1rho_pert(1,1),v1sigma_pert(1,1))
@@ -544,26 +592,26 @@ endif
                     !call msg('s','Here 5.4')
                     !vxc_sigma_pert(:,:,is_xc,1)=vxc_sigma_pert(:,:,is_xc,1) + vxc_tmp(:,:)
 
-                    if (is_xc == 1) then 
-                      spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
-                    else if (is_xc == 2) then
-                      spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
-                      spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
-                    else if (is_xc == 3) then
-                      spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
-                    end if
+                    !if (is_xc == 1) then 
+                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
+                    !else if (is_xc == 2) then
+                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)-2*PERT_FAC_SIGMA
+                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
+                    !else if (is_xc == 3) then
+                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)-2*PERT_FAC_SIGMA
+                    !end if
 
-                    do i3 = 1,n_spin
+                    !do i3 = 1,n_spin
                       spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
                       call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
                       drho_pert(:,i3,:)=real(drho_cmplx, DP)
-                    end do
-                    forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
-                    sigma_tmp(:,:) = sigma(:,:)
-                    sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
-                    & drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
+                    !end do
+                    !forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
                     !sigma_tmp(:,:) = sigma(:,:)
-                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - PERT_FAC_SIGMA
+                    !sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
+                    !& drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
+                    sigma_tmp(:,:) = sigma(:,:)
+                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - PERT_FAC_SIGMA
 
                     v1rho_pert = 0._DP
                     v1sigma_pert = 0._DP
@@ -573,6 +621,7 @@ endif
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
                     f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(2*PERT_FAC_SIGMA)
                     f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(2*PERT_FAC_SIGMA)
+                    !Printing Stataments below
                     if (n_spin==2) then
                     if (is_xc==1) then
                       open (13, file='v1rho_pert_loop_is_xc_1_minus_pert.dat', status='unknown')
@@ -670,14 +719,14 @@ endif
                     endif 
                     !vxc_sigma_pert(:,:,is_xc,2) = vxc_sigma_pert(:,:,is_xc,2) + vxc_tmp(:,:)
                     call msg('s','Here 5.6')
-                    if (is_xc == 1) then 
-                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                    else if (is_xc == 2) then
-                      spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
-                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    else if (is_xc == 3) then
-                      spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
-                    end if
+                    !if (is_xc == 1) then 
+                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                    !else if (is_xc == 2) then
+                    !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
+                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    !else if (is_xc == 3) then
+                    !  spin_rho_SP(:,2)=spin_rho_SP(:,2)+PERT_FAC_SIGMA
+                    !end if
 
                     call msg('s','Here 6')
                 end do 

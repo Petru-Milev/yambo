@@ -19,7 +19,7 @@ subroutine XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
   use QP_m,          ONLY:QP_ng_Vxc
   use D_lattice,     ONLY:alat
   use electrons,     ONLY:n_spin
-  use xc_functionals,ONLY:xc_spin
+  use xc_functionals,ONLY:xc_spin, xc_spin_map1
   use FFT_m,         ONLY:fft_size,fft_dim,fft_g_table
 #if defined _FFTW
   use FFT_m,         ONLY:fftw_plan
@@ -30,6 +30,7 @@ subroutine XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
   real(DP),intent(in) :: v1rho(n_spin,fft_size),v1sigma(xc_spin(1),fft_size)
   real(SP),intent(in) :: drho(fft_size,n_spin,3)
   real(SP),intent(inout) :: V_xc(fft_size,n_spin)
+
   !
   ! Work space
   !
@@ -40,10 +41,13 @@ subroutine XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
   !
   ! 0. define v_drho
   !
+
+  V_xc = 0._SP
   do is1 = 1,n_spin
     v_drho = 0._SP 
     do is2 = 1,n_spin
       is_xc = max(is2*(is1+1)/2,is1*(is2+1)/2)
+      !is_xc = xc_spin_map1(is1,is2)
       ! In the presence of spin 
       ! vsigma(2,:) = vsigma_updw(2,:)+vsigma_dwup(2,:)
       !             = 2*vsigma_updw(2,:)
@@ -51,7 +55,7 @@ subroutine XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
       if (is_xc/=2) fac=1._SP
       if (is_xc==2) fac=2._SP
       forall(ic=1:3,ifft=1:fft_size) v_drho(ifft,ic) = v_drho(ifft,ic) + &
-&                                         2._SP/fac*real(v1sigma(is_xc,ifft),SP)*drho(ifft,is2,ic)
+      &                2._SP/fac*real(v1sigma(is_xc,ifft),SP)*drho(ifft,is2,ic)
     end do
     !
     ! 1. this is done by FFTing, by doing the scalar
@@ -73,7 +77,7 @@ subroutine XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
 #endif
       !
       Vg(1:QP_ng_Vxc)=Vg(1:QP_ng_Vxc)-cI_DP*(2._DP*PI_DP*real(g_vec(1:QP_ng_Vxc,ic)/alat(ic),DP)) * &
-&                             Vr(fft_g_table(1:QP_ng_Vxc,1))/real(fft_size,DP)
+      &            Vr(fft_g_table(1:QP_ng_Vxc,1))/real(fft_size,DP)
       !
     end do    
     !
