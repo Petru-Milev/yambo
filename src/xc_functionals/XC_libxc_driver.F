@@ -602,9 +602,9 @@ endif
                     !end if
 
                     !do i3 = 1,n_spin
-                      spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
-                      call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
-                      drho_pert(:,i3,:)=real(drho_cmplx, DP)
+                      !spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,i3),0.0_SP,kind=SP)
+                      !call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
+                      !drho_pert(:,i3,:)=real(drho_cmplx, DP)
                     !end do
                     !forall (i3=1:n_spin,i1=1:fft_size) drho_pert(i1,i3,:) = drho_pert(i1,i3,:)*fft_size/DL_vol*2._SP*pi/alat(:)
                     !sigma_tmp(:,:) = sigma(:,:)
