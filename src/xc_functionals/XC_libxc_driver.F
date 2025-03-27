@@ -235,10 +235,17 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
      do is1 = 1,n_spin
        do is2 = is1,n_spin
          is_xc = xc_spin_map1(is1,is2)
-         sigma(is_xc,i1) = real(drho(i1,is1,1)*drho(i1,is2,1)+drho(i1,is1,2)*drho(i1,is2,2)+drho(i1,is1,3)*drho(i1,is2,3),DP)
+         sigma(is_xc,i1) = real(drho(i1,is1,1)*drho(i1,is2,1)+drho(i1,is1,2)*drho(i1,is2,2)+drho(i1,is1,3)*drho(i1,is2,3),SP)
        end do
      end do
    end do 
+   open(10,file='sigma.dat',status='unknown')
+    write(10,*) "sigma"
+    do ifft=1,fft_size
+      write(10,*) ifft, (sigma(i1,ifft), i1=1,xc_spin(1))
+    enddo
+    close(10)
+   !
 
  endif
  !
@@ -302,8 +309,8 @@ endif
    !TODO put the perturbation factor in the input file?
    !TODO CHANGE IT NOW FOR THE TESTS
    !PERT_FAC=0.0000001_SP
-   PERT_FAC=0.1D-7
-   PERT_FAC_SIGMA=0.1D-7
+   PERT_FAC=1.0D-7
+   PERT_FAC_SIGMA=1.0E-4
    ORDER_NOW=1
    YAMBO_ALLOC(V_xc_pert,(fft_size,n_spin,n_spin)) 
    ! DS: first n_spin is for the diagonal elements of v_xc, the second is for the spin_up and spin_down perturbation
@@ -388,8 +395,6 @@ endif
          enddo
          close(13)
           endif
-
-
          if (l_Fxc_from_Vxc.and.ORDER==2) then
            !TO DELETE .or.n_spin==1 when the n_spin==1 case is implemented
              ! Here we peturb only density, without perturbing the sigma
@@ -407,7 +412,40 @@ endif
               f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:), DP)
               !TODO add a division/multiplication by two here
               f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:), DP)
-              !up to here checked the vaues, theyr are good
+              if (n_spin==2) then
+                if (is1==1) then
+                  open (13, file='v1rho_pert_loop_is1_plus_pert.dat', status='unknown')
+                  write(13,*) 'v1rho_pert_loop_is1'
+                  do ifft=1,fft_size
+                    write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                  enddo
+                  close(13)
+                  open (13, file='v1sigma_pert_loop_is1_plus_pert.dat', status='unknown')
+                  write(13,*) 'v1sigma_pert_loop_is1'
+                  do ifft=1,fft_size
+                    write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                  enddo
+                  close(13)
+                  
+                  !
+                elseif (is1==2) then
+                  !
+                  open (13, file='v1rho_pert_loop_is2_plus_pert.dat', status='unknown')
+                  write(13,*) 'v1rho_pert_loop_is2'
+                  do ifft=1,fft_size
+                    write(13,*) ifft, v1rho_pert(1,ifft), v1rho_pert(2,ifft)
+                  enddo
+                  close(13)
+                  open (13, file='v1sigma_pert_loop_is2_plus_pert.dat', status='unknown')
+                  write(13,*) 'v1sigma_pert_loop_is2'
+                  do ifft=1,fft_size
+                    write(13,*) ifft, v1sigma_pert(1,ifft), v1sigma_pert(2,ifft), v1sigma_pert(3,ifft)
+                  enddo
+                  close(13)
+                  !
+                endif
+              endif !if n_spin==2  
+  
               call msg('s','Here 4.1')
               
 
@@ -533,12 +571,37 @@ endif
                     !sigma_tmp(:,:) = sigma_pert(:,:,is_xc,1)
                     !call msg('s','Here 5.3')
                     sigma_tmp(:,:) = sigma(:,:)
-                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
-                    !call msg('s','Here 5.31')
+                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + 3*PERT_FAC_SIGMA
+
                     call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
-                    f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:))
-                    f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:))
+                    f1rho(:,:)=f1rho(:,:)+2*real(v1rho_pert(:,:), DP)
+                    f1sigma(:,:)=f1sigma(:,:)+2*real(v1sigma_pert(:,:), DP)
+                    !!!!!!!!!!!!!!!!!!!!!!!
+
+
+                    sigma_tmp(:,:) = sigma(:,:)
+                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + 2*PERT_FAC_SIGMA
+                    call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
+                                    v1rho_pert(1,1),v1sigma_pert(1,1))
+                    f1rho(:,:)=f1rho(:,:)-9*real(v1rho_pert(:,:), DP)
+                    f1sigma(:,:)=f1sigma(:,:)-9*real(v1sigma_pert(:,:), DP)
+                    !!!!!!!!!!!!!!!!
+                    sigma_tmp(:,:) = sigma(:,:)
+                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
+                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
+                    !call msg('s','Here 5.31')
+                    v1rho_pert = 0._DP
+                    v1sigma_pert = 0._DP
+                    call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
+                                    v1rho_pert(1,1),v1sigma_pert(1,1))
+                    !f1rho(:,:)=real(v1rho_pert(:,:), DP)
+                    !f1sigma(:,:)=real(v1sigma_pert(:,:), DP)
+                    f1rho(:,:)=f1rho(:,:)+18*real(v1rho_pert(:,:), DP)
+                    f1sigma(:,:)=f1sigma(:,:)+18*real(v1sigma_pert(:,:), DP)
+                    !!!!!!!!!!!!!!!!!!!!!!!
+
+                    
 
                     if (n_spin==2) then
                       if (is_xc==1) then
@@ -583,7 +646,7 @@ endif
                         enddo
                         close(13)
                       endif
-                      endif !if n_spin==2
+                     endif !if n_spin==2
 
 
                     !call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1),& 
@@ -611,16 +674,46 @@ endif
                     !sigma_tmp(is_xc,:) = real(drho_pert(:,is1,1)*drho_pert(:,is2,1)+drho_pert(:,is1,2)*drho_pert(:,is2,2)+&
                     !& drho_pert(:,is1,3)*drho_pert(:,is2,3),DP)
                     sigma_tmp(:,:) = sigma(:,:)
-                    sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - PERT_FAC_SIGMA
+                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - PERT_FAC_SIGMA
 
-                    v1rho_pert = 0._DP
-                    v1sigma_pert = 0._DP
+                    !v1rho_pert = 0._DP
+                    !v1sigma_pert = 0._DP
 
                     !call msg('s','Here 5.5')
+                    v1rho_pert = 0._DP
+                    v1sigma_pert = 0._DP
                     call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
                                     v1rho_pert(1,1),v1sigma_pert(1,1))
-                    f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(2*PERT_FAC_SIGMA)
-                    f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(2*PERT_FAC_SIGMA)
+                    !call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1),& 
+                    !                v1rho_pert(1,1),v1sigma_pert(1,1))
+                    f1rho(:,:)=f1rho(:,:)-11*real(v1rho_pert(:,:), DP)
+                    f1sigma(:,:)=f1sigma(:,:)-11*real(v1sigma_pert(:,:), DP)
+                    f1rho(:,:)=f1rho(:,:)/(6*PERT_FAC_SIGMA)
+                    f1sigma(:,:)=f1sigma(:,:)/(6*PERT_FAC_SIGMA)
+                    !!!!!!!!!!!!!!!
+                    !sigma_tmp(:,:) = sigma(:,:)
+                    !sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - 2*PERT_FAC_SIGMA
+                    !v1rho_pert = 0._DP
+                    !v1sigma_pert = 0._DP  
+                    !call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
+                    !                v1rho_pert(1,1),v1sigma_pert(1,1))
+                    !f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:), DP)
+                    !f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:), DP)
+                    !f1rho(:,:)=f1rho(:,:)/(12*PERT_FAC_SIGMA)
+                    !f1sigma(:,:)=f1sigma(:,:)/(12*PERT_FAC_SIGMA)
+                    !!!!!!!!!!!!!!!!!!!!!!
+                    
+                    !f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(PERT_FAC_SIGMA)
+                    !f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(PERT_FAC_SIGMA)
+                    !f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(2*PERT_FAC_SIGMA)
+                    !f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(2*PERT_FAC_SIGMA)
+                     
+                    do i1=1,fft_size
+                      if (sigma(is_xc,i1) < 1.0e-5) then 
+                        f1rho(:,i1) = 0._DP
+                        f1sigma(:,i1) = 0._DP
+                      endif
+                    end do
                     !Printing Stataments below
                     if (n_spin==2) then
                     if (is_xc==1) then
