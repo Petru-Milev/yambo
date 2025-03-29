@@ -310,7 +310,7 @@ endif
    !TODO CHANGE IT NOW FOR THE TESTS
    !PERT_FAC=0.0000001_SP
    PERT_FAC=1.0D-7
-   PERT_FAC_SIGMA=1.0E-4
+   PERT_FAC_SIGMA=1.0D-8
    ORDER_NOW=1
    YAMBO_ALLOC(V_xc_pert,(fft_size,n_spin,n_spin)) 
    ! DS: first n_spin is for the diagonal elements of v_xc, the second is for the spin_up and spin_down perturbation
