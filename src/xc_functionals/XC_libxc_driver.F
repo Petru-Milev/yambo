@@ -217,8 +217,6 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
        call eval_Gradient(spin_rho_SP_cmplx,drho_cmplx,1,"density")
        drho(:,is1,:)=real(drho_cmplx)
      end do
-     !Y(MBO_FREE(drho_cmplx)
-     !Y_AMBO_FREE(spin_rho_SP_cmplx)
    else
      ! DS: This procedure computes a more precise drho (much less noise)
      !     This is particularly important for the case order=2
@@ -270,6 +268,8 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
   vxc_sigma_pert = 0._DP
   YAMBO_ALLOC(vxc_rho_pert,(fft_size,n_spin,n_spin,2))
   vxc_rho_pert = 0._DP
+  !This will be used by the equilibrium case as well
+  !Do not put it under if stataments. Unless smth liek if order==2 
   YAMBO_ALLOC(vxc_tmp,(fft_size, n_spin))
   vxc_tmp = 0._DP
   YAMBO_ALLOC(sigma_tmp,(xc_spin(1),fft_size))
@@ -386,7 +386,10 @@ endif
            v1sigma=v1sigma-(EXX_FRACTION*vx2)/2._DP
          endif
          ! Yambo internal for V_xc
-         call XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc)
+         ! V_xc(fft_size,n_spin)
+         vxc_tmp = 0._DP
+         call XC_eval_gga_potential(v1rho,v1sigma,drho, vxc_tmp)
+         V_xc(:,:) = V_xc(:,:) + vxc_tmp(:,:)
          open (13, file='vxc_default.dat', status='unknown')
          if (n_spin==2) then
          write(13,*) 'vxc_sigma_pert'
