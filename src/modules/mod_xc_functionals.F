@@ -17,6 +17,7 @@ module xc_functionals
  integer  :: xc_spin(2)
  integer, allocatable :: xc_spin_map1(:,:)
  integer, allocatable :: xc_spin_map2(:,:,:)
+ integer, allocatable :: xc_spin_map_v2sigma2(:,:) 
  !
  integer,  public:: GS_xc_KIND
  integer,  public:: GS_xc_FUNCTIONAL

@@ -29,7 +29,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  use TDDFT,          ONLY:l_Fxc_from_Vxc
  use xc_functionals, ONLY:E_xc,E_xc_val,magn,F_xc,V_xc,xc_setup_hyb,&
 &                         XC_LDA_C_KP,xc_fnctl_t,xc_setup_fnctl,xc_f03_func_end, &
-&                         xc_spin,xc_spin_map1, &
+&                         xc_spin,xc_spin_map1,xc_spin_map_v2sigma2, &
 &                         XC_HYB_GGA_XC_GAUPBE,XC_FACTOR,&
 &                         XC_FAMILY_LDA,XC_FAMILY_GGA,XC_FAMILY_HYB_GGA,&
 &                         XC_GGA_X_PBE, XC_GGA_C_PBE
@@ -67,7 +67,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  !
  real(DP),allocatable :: tmp_exc(:)
  real(DP),allocatable :: v1rho(:,:),v1rho_pert(:,:),v1sigma(:,:),v1sigma_pert(:,:), vxc_rho_pert(:,:,:,:), &
- & vxc_sigma_pert(:,:,:,:), f1rho(:,:), f1sigma(:,:)
+ & vxc_sigma_pert(:,:,:,:), f1rho(:,:), f1sigma(:,:), temp_var_rho(:,:), temp_var_sigma(:,:)
  real(DP),allocatable :: vx1(:,:),vx2(:,:)
  real(DP),allocatable :: v2rho2(:,:),v2rhosigma(:,:),v2sigma2(:,:)
  logical              :: EvaluateDGradient,l_Fxc_Libxc
@@ -80,12 +80,17 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  ! Convert and Initialize
  !===============================
  !
- !call parser('FxcLibxc',l_Fxc_Libxc)
- !call parser('FxcFromVxc',l_Fxc_from_Vxc)
+l_Fxc_from_Vxc=.FALSE.
+ l_Fxc_Libxc=.TRUE.
+ call parser('FxcLibxc',l_Fxc_Libxc)
+ call parser('FxcFromVxc',l_Fxc_from_Vxc)
+ if (l_Fxc_from_Vxc) then
+  l_Fxc_Libxc=.FALSE.
+ endif
  !l_Fxc_from_Vxc=.not.l_Fxc_Libxc
  !
- l_Fxc_from_Vxc=.TRUE.
- l_Fxc_Libxc=.FALSE.
+ !l_Fxc_from_Vxc=.TRUE.
+ !l_Fxc_Libxc=.FALSE.
  exsr=0._DP
  FUNCTIONALTMP=0
 !Set the functional as a PBE to get Exc, next calculate the GAU-PBE Exc as
@@ -207,9 +212,9 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
    endif 
    !
    YAMBO_ALLOC(drho_cmplx,(fft_size,3))
+   YAMBO_ALLOC(spin_rho_SP_cmplx,(fft_size))  
    drho_cmplx=0._SP
-   if (n_spin>1 .or. order<2 .or. l_Fxc_from_Vxc) then
-     YAMBO_ALLOC(spin_rho_SP_cmplx,(fft_size))  
+   if (n_spin>0  .or. order<2) then
      do is1 = 1,n_spin
        spin_rho_SP_cmplx(:)=cmplx(spin_rho_SP(:,is1),0.0_SP,kind=SP)
 
@@ -257,6 +262,11 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  !
  
  !TODO put some if stataments here
+
+  YAMBO_ALLOC(temp_var_rho,(n_spin,fft_size))
+  temp_var_rho=0._DP
+  YAMBO_ALLOC(temp_var_sigma,(xc_spin(1),fft_size))
+  temp_var_sigma=0._DP
   YAMBO_ALLOC(f1rho,(n_spin,fft_size))
   f1rho=0._DP
   YAMBO_ALLOC(f1sigma,(xc_spin(1),fft_size))
@@ -392,14 +402,15 @@ endif
          V_xc(:,:) = V_xc(:,:) + vxc_tmp(:,:)
          open (13, file='vxc_default.dat', status='unknown')
          if (n_spin==2) then
-         write(13,*) 'vxc_sigma_pert'
+         write(13,*) 'vxc_default'
          do ifft=1,fft_size
            write(13,*) ifft, V_xc(ifft,1), V_xc(ifft,2)
          enddo
          close(13)
           endif
-         if (l_Fxc_from_Vxc.and.ORDER==2) then
-           !TO DELETE .or.n_spin==1 when the n_spin==1 case is implemented
+         !if (l_Fxc_from_Vxc.and.ORDER_NOW==1) then
+         if (l_Fxc_from_Vxc) then   
+          !TO DELETE .or.n_spin==1 when the n_spin==1 case is implemented
              ! Here we peturb only density, without perturbing the sigma
             do is1=1,n_spin ! \partial V_xc^{alpha} / \partial rho^{is1} - notation used from the notes
               call msg('s','Here 4')
@@ -551,6 +562,27 @@ endif
                     f1sigma = 0._DP
                     v1rho_pert = 0._DP
                     v1sigma_pert = 0._DP
+                    if (is_xc==2) then 
+                      !text
+                      sigma_tmp = sigma(:,:)
+                      sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) + PERT_FAC_SIGMA
+                      call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
+                                      v1rho_pert(1,1),v1sigma_pert(1,1))
+                      f1rho(:,:)=f1rho(:,:)+real(v1rho_pert(:,:), DP)
+                      f1sigma(:,:)=f1sigma(:,:)+real(v1sigma_pert(:,:), DP)
+                      
+                      sigma_tmp(is_xc,:) = sigma_tmp(is_xc,:) - 2*PERT_FAC_SIGMA
+                      call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma_tmp(1,1),& 
+                                      v1rho_pert(1,1),v1sigma_pert(1,1))
+                      f1rho(:,:)=f1rho(:,:)-real(v1rho_pert(:,:), DP)
+                      f1sigma(:,:)=f1sigma(:,:)-real(v1sigma_pert(:,:), DP)
+
+                      f1rho(:,:)=f1rho(:,:)/(2*PERT_FAC_SIGMA)
+                      f1sigma(:,:)=f1sigma(:,:)/(2*PERT_FAC_SIGMA)
+                      call msg('s','inside is_xc=2 loop')
+                    else 
+
+                    
                     !if (is_xc == 1) then 
                     !  spin_rho_SP(:,1)=spin_rho_SP(:,1)+PERT_FAC_SIGMA
                     !else if (is_xc == 2) then
@@ -603,9 +635,6 @@ endif
                     f1rho(:,:)=f1rho(:,:)+18*real(v1rho_pert(:,:), DP)
                     f1sigma(:,:)=f1sigma(:,:)+18*real(v1sigma_pert(:,:), DP)
                     !!!!!!!!!!!!!!!!!!!!!!!
-
-                    
-
                     if (n_spin==2) then
                       if (is_xc==1) then
                         open (13, file='v1rho_pert_loop_is_xc_1_minus_pert.dat', status='unknown')
@@ -710,13 +739,14 @@ endif
                     !f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(PERT_FAC_SIGMA)
                     !f1rho(:,:)=real(f1rho(:,:)-real(v1rho_pert(:,:)), DP)/(2*PERT_FAC_SIGMA)
                     !f1sigma(:,:)=real(f1sigma(:,:)-real(v1sigma_pert(:,:), DP))/(2*PERT_FAC_SIGMA)
-                     
-                    do i1=1,fft_size
-                      if (sigma(is_xc,i1) < 1.0e-5) then 
-                        f1rho(:,i1) = 0._DP
-                        f1sigma(:,i1) = 0._DP
-                      endif
-                    end do
+                    call msg('s','Here inside numerical loop sigma')
+                    !TODO
+                    !do i1=1,fft_size
+                    !  if (sigma(is_xc,i1) < 1.0e-5) then 
+                    !    f1rho(:,i1) = 0._DP
+                    !    f1sigma(:,i1) = 0._DP
+                    !  endif
+                    !end do
                     !Printing Stataments below
                     if (n_spin==2) then
                     if (is_xc==1) then
@@ -802,12 +832,17 @@ endif
                       close(13)
                     endif
                     endif !if n_spin==2
-
+                    endif !if is_xc==2
                     !call XC_eval_gga_potential(v1rho_pert,v1sigma_pert,drho,vxc_tmp(:,:)) !wil return Vxc_tmp(fft, n_spin)\
                     vxc_tmp(:,:) = 0._DP
                     call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp(:,:))
                     if (n_spin==2) then
                     write(*,*) 'vxc_tmp', vxc_tmp(1,1), vxc_tmp(1,2)
+                    endif
+                    if (is_xc==2) then 
+                      !idk why tbh
+                      !to match libxc value 
+                      vxc_tmp(:,:) = 2*vxc_tmp(:,:)
                     endif
                     vxc_sigma_pert(:,:,is_xc,1)=vxc_sigma_pert(:,:,is_xc,1) + vxc_tmp(:,:)
                     if (n_spin==2) then
@@ -831,8 +866,10 @@ endif
            
            !call XC_eval_gga_potential(v1rho,v1sigma,drho,V_xc_pert)
            !spin_rho_DP=spin_rho_DPPERT_FAC
+         
          end if
        case(2)
+        call msg('s','Inside ORDER==2 case 2 GGA functional')
          if (FUNCTIONAL==XC_HYB_GGA_XC_GAUPBE*XC_FACTOR) call error(' Fxc not coded for GAU-PBEP')
          if( l_BS_magnons) then
            call xc_f03_gga_vxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1), v1rho(1,1), v1sigma(1,1))
@@ -841,13 +878,80 @@ endif
          endif
          ! I could avoid this, however I need it due to numerical noise
          ! See also comment in Build_F_xc_mat
-         !if( (.not.l_BS_magnons) .or. n_spinor==2) then
+         ! i_f ( (.not.l_BS_magnons) .or. n_spinor==2) then
+             !Y)A_MBO_ALLOC(vxc_sigma_pert,(fft_size, n_spin, xc_spin(1) ,2))  
+             !For vxc_sigma_pert. Second index - values of Vxc up or down, 
+             !third (xc_spin) - index of which component of sigma is perturbed
+             !fourth - 1 plus perturbation, 2 minus perturbation
+             !vxc_sigma_pert = 0._DP
+             !Y(AM_BO_ALLOC(vxc_rho_pert,(fft_size,n_spin,n_spin,2))
+           if (l_Fxc_Libxc) then
            call xc_f03_gga_fxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1), v2rho2(1,1), v2rhosigma(1,1), v2sigma2(1,1))
+            do i1 = 1, n_spin
+              temp_var_rho = 0._DP
+              temp_var_sigma = 0._DP
+              f1sigma = 0._DP
+              f1rho = 0._DP 
+              vxc_tmp(:,:) = 0._DP
+              !Derivatives w respect to density 
+                do i2 = 1, n_spin
+                  i3 = xc_spin_map1(i1,i2) 
+                  temp_var_rho(i2,:) = v2rho2(i3, :)
+                enddo 
+                !if (i1 == 1) then 
+                !  temp_var_rho(1,:) = v2rho2(1,:)
+                !  temp_var_rho(2,:) = v2rho2(2,:)
+                !elseif (i1 == 2) then
+                !  temp_var_rho(1,:) = v2rho2(2,:)
+                !  temp_var_rho(2,:) = v2rho2(3,:)
+                !endif 
+
+                
+                do i2 = 1, xc_spin_map1(n_spin,n_spin)
+                  !if (i1 == 1) then 
+                  !  i3 = 0
+                  !elseif (i1 == 2) then
+                  !  i3 = 3
+                  !endif 
+                  !temp_var_sigma(i2,:) = v2rhosigma(3*(i1-1) + i2, :)
+                  temp_var_sigma(i2,:) = v2rhosigma(3*(i1-1) + i2, :)
+                enddo 
+                call XC_eval_gga_potential(temp_var_rho,temp_var_sigma,drho,vxc_tmp(:,:))
+                forall (i3=1:n_spin) vxc_rho_pert(:,i3, i1, 1) = vxc_rho_pert(:,i3, i1, 1) + real(vxc_tmp(:,i3),DP)
+                vxc_tmp = 0._DP
+            enddo 
+              
+
+                !Derivatives w respect to sigma
+
+            temp_var_rho = 0._DP
+            temp_var_sigma = 0._DP
+            f1sigma = 0._DP
+            do i2 = 1,xc_spin_map1(n_spin,n_spin)
+              do i3 = 1,n_spin
+                temp_var_rho(i3, :) = v2rhosigma(3*(i3-1) + i2, :)
+              enddo
+              do i3 = 1,xc_spin_map1(n_spin,n_spin)
+                temp_var_sigma(i3,:) = v2sigma2(xc_spin_map_v2sigma2(i3,i2), :)
+              enddo
+                vxc_tmp(:,:) = 0._DP
+              call XC_eval_gga_potential(temp_var_rho,temp_var_sigma,drho,vxc_tmp(:,:))
+              vxc_sigma_pert(:,:,i2,1) = vxc_sigma_pert(:,:,i2,1) +  real(vxc_tmp(:,:),DP)
+            enddo 
+                vxc_tmp(:,:) = 0._DP
+                !call XC_eval_gga_potential(f1rho,f1sigma,drho,vxc_tmp(:,:))
+                !F_xc(:,i1,:) = vxc_tmp(:,:)
+                call msg('s','after fxc loop')
+
+            
+             
+                     
            ! Yambo internal for Kxc
-           call XC_eval_gga_kernel(v1rho,v1sigma,v2rho2,v2rhosigma,v2sigma2)
-         !endif
-     end select
-   end if
+           !call XC_eval_gga_kernel(v1rho,v1sigma,v2rho2,v2rhosigma,v2sigma2)
+           !endif
+          endif !if (l_Fxc_Libxc) then
+       end select
+   endif
    call xc_f03_func_end(fnctl(ixc)%conf)
  enddo
  !
@@ -857,7 +961,7 @@ endif
    E_xc_val = V_dot_V(fft_size,rho,E_xc(:))
    if (FUNCTIONAL==XC_HYB_GGA_XC_GAUPBE*XC_FACTOR)  E_xc_val= E_xc_val-EXX_FRACTION*real(exsr,SP)
  endif
- !
+ !  
 
  if (n_spin==2) then
  open (13, file='vxc_rho_pert.dat', status='unknown')
@@ -868,9 +972,19 @@ endif
    !write(13,*) i2, vxc_rho_pert(i2,i1,1,2), vxc_rho_pert(i2,i1,2,2)
  enddo
  close(13)
+ open (13, file='vxc_sigma_pert_new.dat', status='unknown')
+  write(13,*) 'vxc_sigma_pert'
+  do i2=1,fft_size
+    write(13,*) i2, vxc_sigma_pert(i2,1,1,1), vxc_sigma_pert(i2,1,2,1), vxc_sigma_pert(i2,1,3,1)
+    write(13,*) i2, vxc_sigma_pert(i2,2,1,1), vxc_sigma_pert(i2,2,2,1), vxc_sigma_pert(i2,2,3,1)
+    !write(13,*) i2, vxc_rho_pert(i2,i1,1,2), vxc_rho_pert(i2,i1,2,2)
+  enddo
+  close(13)
 endif 
 
- if (l_Fxc_from_Vxc.and.ORDER==2) then
+ !if (l_Fxc_from_Vxc.and.ORDER==2) then
+
+if (l_Fxc_Libxc.or.l_Fxc_from_Vxc) then
    if (any(fnctl(:)%family==XC_FAMILY_LDA)) then
      call msg('s','Inside the numder loop. LDA')
      do i1=1,n_spin
@@ -880,16 +994,6 @@ endif
          enddo 
        enddo
      enddo
-     if (n_spin==2) then
-       YAMBO_ALLOC(tmp, (fft_size))
-       !12 and 21 components should be equal, here we try to reduce numerical error 
-       !Can there exist systems or cases when they are not the same?
-       !TO take comment out 
-       !tmp=(F_xc(:,1,2)+F_xc(:,2,1))/2._DP !to check  
-       !F_xc(:,1,2)=tmp 
-       !F_xc(:,2,1)=tmp 
-       YAMBO_FREE(tmp)
-     endif 
    else if (any((fnctl(:)%family==XC_FAMILY_GGA).or.any(fnctl(:)%family==XC_FAMILY_HYB_GGA))) then
      call msg('s','Inside the numder loop. GGA')
      !vxc_rho_pert is (fft_size, n_spin, n_spin, 2) and vxc_sigma_pert is (
@@ -899,6 +1003,7 @@ endif
      !If it works it will be explained in the notes
       do i1=1,n_spin
         !do i2=1,n_spin
+          !vxc_rho_pert(ifft,i1,i2,1) \deltaVxc^{i1}/\detla rho^{i3}
           forall (ifft=1:fft_size, i3=1:n_spin) f1rho(i3,ifft) = real(vxc_rho_pert(ifft,i1,i3,1))
           forall (i3=1:xc_spin(1), ifft=1:fft_size) f1sigma(i3,ifft) = real(vxc_sigma_pert(ifft,i1,i3,1))
           vxc_tmp(:,:) = 0._DP
@@ -920,11 +1025,11 @@ endif
         !forall (i2=1:n_spin) f1rho(i2,:) = real(real(vxc_rho_pert(:,i1,i2,1) - vxc_rho_pert(:,i1,i2,2),DP)/(2*PERT_FAC),DP)
         !forall (i2=1:n_spin) f1rho(i2,:) = real(real(vxc_rho_pert(:,i1,i2,1) - vxc_rho_pert(:,i1,i2,2),DP)/(2*PERT_FAC),DP)
         !TO CHECK THIS
-        forall (i2=1:n_spin, ifft=1:fft_size) f1rho(i2,ifft) = real(vxc_rho_pert(ifft,i2,i1,1))
+        !forall (i2=1:n_spin, ifft=1:fft_size) f1rho(i2,ifft) = real(vxc_rho_pert(ifft,i2,i1,1))
         !forall (i2=1:xc_spin(1)) f1sigma(i2,:) = real(real((vxc_sigma_pert(:,i1,i2,1) - &
         !&                                          vxc_sigma_pert(:,i1,i2,2)),DP)/(2*PERT_FAC_SIGMA),DP)
         !forall (i2=1:xc_spin(1)) f1sigma(i2,:) = real(real((vxc_sigma_pert(:,i1,i2,1) - v1sigma(i2,:)),DP)/(2*PERT_FAC_SIGMA),DP)
-        forall (i2=1:xc_spin(1), ifft=1:fft_size) f1sigma(i2,ifft) = real(vxc_sigma_pert(ifft,i1,i2,1))
+        !forall (i2=1:xc_spin(1), ifft=1:fft_size) f1sigma(i2,ifft) = real(vxc_sigma_pert(ifft,i1,i2,1))
         call msg('s','Here post f1sigma')
         !f1rho(:,:) = vxc_rho_pert(:,:,is1,1)
 
@@ -1040,10 +1145,10 @@ call msg('s','Here 7.04')
  if (present(EXX_FRACTION)) EXX_FRACTION = local_exx_fraction 
  !
  call msg('s','Here 7.10')
+ YAMBO_FREE(spin_rho_SP_cmplx)
  if (l_Fxc_from_Vxc) then 
    YAMBO_FREE(V_xc_pert)
    YAMBO_FREE(V_xc_pert_cd)
-   YAMBO_FREE(spin_rho_SP_cmplx)
    YAMBO_FREE(sigma_pert)
    YAMBO_FREE(v1rho_pert)
    YAMBO_FREE(v1sigma_pert)

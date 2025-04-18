@@ -13,7 +13,7 @@ subroutine build_xc_spin_map()
  ! 2 for kxc = the derivative of fxc, at present not used in yambo
  !
  use electrons,            ONLY:n_spin
- use xc_functionals,       ONLY:xc_spin,xc_spin_map1,xc_spin_map2
+ use xc_functionals,       ONLY:xc_spin,xc_spin_map1,xc_spin_map2, xc_spin_map_v2sigma2
  !
  implicit none
  !
@@ -21,8 +21,10 @@ subroutine build_xc_spin_map()
    xc_spin=1
    allocate(xc_spin_map1(1,1))
    allocate(xc_spin_map2(1,1,1))
+   allocate(xc_spin_map_v2sigma2(1,1))
    xc_spin_map1=1
    xc_spin_map2=1
+   xc_spin_map_v2sigma2=1 
    return
  endif
  !
@@ -31,11 +33,24 @@ subroutine build_xc_spin_map()
  xc_spin(1)=3
  !
  allocate(xc_spin_map1(n_spin,n_spin))
+ allocate(xc_spin_map_v2sigma2(3,3))
  !
  xc_spin_map1(1,1)=1
  xc_spin_map1(1,2)=2
  xc_spin_map1(2,1)=2
  xc_spin_map1(2,2)=3
+
+ ! Libxc v2sigma2 variable map 
+ xc_spin_map_v2sigma2(1,1)=1
+ xc_spin_map_v2sigma2(1,2)=2
+ xc_spin_map_v2sigma2(1,3)=3
+ xc_spin_map_v2sigma2(2,1)=2
+ xc_spin_map_v2sigma2(2,2)=4
+ xc_spin_map_v2sigma2(2,3)=5
+ xc_spin_map_v2sigma2(3,1)=3
+ xc_spin_map_v2sigma2(3,2)=5
+ xc_spin_map_v2sigma2(3,3)=6
+
  !
  ! kxc
  !
