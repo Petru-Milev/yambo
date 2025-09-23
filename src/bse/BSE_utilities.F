@@ -81,6 +81,8 @@ subroutine TDDFT_oscillators_alloc_L(iGL)
  if (BS_T_grp(iGL)%size>0) then
    !DEV_ACC enter data copyin(BS_T_grp(iGL))
    YAMBO_ALLOC(BS_T_grp(iGL)%O_tddft_L,(BS_n_g_fxc,BS_T_grp(iGL)%size,n_spinor,n_spinor))
+   !TO DO add check if gga functional
+   YAMBO_ALLOC(BS_T_grp(iGL)%O_tddft_gga_1_L,(BS_n_g_fxc,BS_T_grp(iGL)%size,n_spinor,n_spinor)) 
    if (have_gpu) then
      YAMBO_ALLOC_GPU(DEV_VAR(BS_T_grp(iGL)%O_tddft_L),(BS_n_g_fxc,BS_T_grp(iGL)%size,n_spinor,n_spinor))
    endif
@@ -96,6 +98,8 @@ subroutine TDDFT_oscillators_alloc_R(iGR)
  if (BS_T_grp(iGR)%size>0) then
    !DEV_ACC enter data copyin(BS_T_grp(iGR))
    YAMBO_ALLOC(BS_T_grp(iGR)%O_tddft_R,(BS_n_g_fxc,BS_T_grp(iGR)%size,n_spin,n_spin))
+   !TO DO add check if gga functional 
+   YAMBO_ALLOC(BS_T_grp(iGL)%O_tddft_gga_1_R,(BS_n_g_fxc,BS_T_grp(iGL)%size,n_spinor,n_spinor))
    if (have_gpu) then
       YAMBO_ALLOC_GPU(DEV_VAR(BS_T_grp(iGR)%O_tddft_R),(BS_n_g_fxc,BS_T_grp(iGR)%size,n_spin,n_spin))
    endif
@@ -110,6 +114,8 @@ subroutine TDDFT_oscillators_free_L(iG_ref)
  do iGL=iG_ref,1,-1
    YAMBO_FREE_GPU(DEV_VAR(BS_T_grp(iGL)%O_tddft_L))
    YAMBO_FREE(BS_T_grp(iGL)%O_tddft_L)
+   !TO DO ADD A CHECK IF GGA FUNCTIONAL 
+   YAMBO_FREE(BS_T_grp(iGL)%O_tddft_gga_1_L)
    !DEV_ACC exit data delete(BS_T_grp(iGL))
  enddo
 end subroutine TDDFT_oscillators_free_L
@@ -122,6 +128,8 @@ subroutine TDDFT_oscillators_free_R(iG_ref)
  do iGR=iG_ref,1,-1
    YAMBO_FREE_GPU(DEV_VAR(BS_T_grp(iGR)%O_tddft_R))
    YAMBO_FREE(BS_T_grp(iGR)%O_tddft_R)
+   !TO DO ADD A CHECK IF GGA FUNCTIONAL 
+   YAMBO_FREE(BS_T_grp(iGR)%O_tddft_gga_1_R)
    !DEV_ACC exit data delete(BS_T_grp(iGR))
  enddo
 end subroutine TDDFT_oscillators_free_R
