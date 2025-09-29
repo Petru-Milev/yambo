@@ -25,6 +25,7 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_L(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
  use openmp,         ONLY:OPENMP_update,master_thread
  use interfaces,     ONLY:WF_apply_symm
  use TDDFT,          ONLY:tddft_wf_t
+ use xc_functionals, ONLY:n_xc, F_xc_mat 
  !
  implicit none
  !
@@ -40,6 +41,7 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_L(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
  integer     :: i_spinor,j_spinor,ip_spinor,jp_spinor,ifft,irhotw,is_yambo,os_yambo,i_spinor_y,j_spinor_y
  integer     :: i_T_el,i_T_el_p,N_T_el_p,i_c,i_v,i_sp_c,i_sp_v,i_k_bz,i_k,i_s,i_g0,i_g1,i_g2,i_p_bz,i_g_p,i_p,&
 &               i_sp,i_T_grp_p,is(4),os(4),qs(3),NK(2)
+ integer     :: i_dir 
  !
  complex(DP), pointer DEV_ATTR :: rhotwr_p(:)
  complex(SP), pointer :: WF_symm1_p(:,:)
@@ -118,9 +120,18 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_L(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
    call WF_apply_symm(is,WF_symm1_p)
    call WF_apply_symm(os,WF_symm2_p)
    !
+   !BS_T_grp(iGR)%size,n_spin,n_spin, n_xc)
+   !F_xc_mat,(fft_size,n_spin,n_spin,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim) 7 ind
+   !%O_tddft_L(:,i_T_el,i_spinor,j_spinor, n_xc, f_xc_mat_xyz_dim) 6 ind 
    if( n_spinor==1 ) then
      rhotwr_p(:)=cmplx(WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1)),kind=DP)
-     call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_L(:,i_T_el,1,1))
+     call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_L(:,i_T_el,1,1,1,1))
+     if (n_xc==5) then
+       do i_dir=1,3 
+         rhotwr_p(:)=cmplx(F_xc_mat(:,1,1,1,1,2,i_dir)*conjg(WF_symm1_p(:,1))*WF_symm2_p(:,1),kind=DP)
+         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_L(:,i_T_el,1,1,2,i_dir))
+       enddo 
+     endif 
    endif
    !
    if(n_spinor==2) then
@@ -131,7 +142,7 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_L(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
 	 do ifft=1,fft_size
 	   rhotwr_p(ifft)=cmplx(WF_symm1_p(ifft,i_spinor)*conjg(WF_symm2_p(ifft,j_spinor)),kind=DP)
          enddo
-         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_L(:,i_T_el,i_spinor,j_spinor))
+         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_L(:,i_T_el,i_spinor,j_spinor,1,1))
          !
        enddo
      enddo

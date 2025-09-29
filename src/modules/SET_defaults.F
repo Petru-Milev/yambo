@@ -66,7 +66,7 @@ subroutine SET_defaults(INSTR,IND,OD,COM_DIR)
 #endif
  use zeros,      ONLY:zero_norm,k_iku_zero,k_rlu_zero,G_iku_zero,G_mod_zero,zero_dfl
  use y_memory,   ONLY:MEMs,LARGE_MEMs,N_MEM_max,N_MEM_SAVE_max,MEM_element_init
- use xc_functionals,  ONLY:GS_xc_FUNCTIONAL,GS_xc_KIND,GS_exx_FRACTION,GS_exx_SCREENING 
+ use xc_functionals,  ONLY:GS_xc_FUNCTIONAL,GS_xc_KIND,GS_exx_FRACTION,GS_exx_SCREENING, n_xc, f_xc_mat_xyz_dim
  use BS,         ONLY:l_BS_anomalous_Hall
  use PHOTOLUM,   ONLY:PL_weights
 #if defined _SC 
@@ -501,6 +501,8 @@ subroutine SET_defaults(INSTR,IND,OD,COM_DIR)
  !
  l_BS_anomalous_Hall=.false.
  PL_weights=(/1._SP,1._SP,1._SP/)
+ n_xc = 1                       ! LDA case
+ f_xc_mat_xyz_dim = 1           ! LDA case 
  !
 #if defined _ELPH 
  !

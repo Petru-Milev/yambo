@@ -17,7 +17,7 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_R(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
  use pars,           ONLY:SP,DP,pi,cZERO
  use FFT_m,          ONLY:fft_size
  use wave_func,      ONLY:WF
- use xc_functionals, ONLY:F_xc_mat
+ use xc_functionals, ONLY:F_xc_mat, n_xc
  use interfaces,     ONLY:WF_load,WF_free
  use R_lattice,      ONLY:qindx_X,bz_samp,minus_G
  use BS,             ONLY:l_BS_magnons,BS_T_grp,BS_bands
@@ -128,11 +128,19 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_R(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
    call WF_apply_symm(is,WF_symm1_p)
    call WF_apply_symm(os,WF_symm2_p)
    !
+   !BS_T_grp(iGR)%size,n_spin,n_spin, n_xc)
+   !F_xc_mat,(fft_size,n_spin,n_spin,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim) 7 ind
+   !%O_tddft_L(:,i_T_el,i_spinor,j_spinor, n_xc, f_xc_mat_xyz_dim) 6 ind
    if( n_spin==1 ) then
      !
-     rhotwr_p(:)=cmplx(F_xc_mat(:,1,1,1,1)*WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1)),kind=DP)
-     call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,1,1))
+     rhotwr_p(:)=cmplx(F_xc_mat(:,1,1,1,1,1,1)*WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1)),kind=DP)
+     call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,1,1,1,1))
      !
+     if (n_xc==5) then 
+       rhotwr_p(:)=cmplx(conjg(WF_symm1_p(:,1))*WF_symm2_p(:,1),kind=DP)
+       call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,1,1,2,1))
+     endif 
+
    endif
    !
    if(n_sp_pol==2) then
@@ -147,9 +155,9 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_R(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
          is_yambo=o_sp_loop
          os_yambo=i_sp_loop
          ! To check/fix the spinorial version 
-         rhotwr_p(:)=cmplx(F_xc_mat(:,is_yambo,os_yambo,is(4),os(4))* &
+         rhotwr_p(:)=cmplx(F_xc_mat(:,is_yambo,os_yambo,is(4),os(4),1,1)* &
          &                                             WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1)),kind=DP)
-         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,i_sp_loop,o_sp_loop))
+         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,i_sp_loop,o_sp_loop,1,1))
          !
        enddo
      enddo
@@ -166,12 +174,12 @@ subroutine TDDFT_ALDA_eh_space_G_collisions_R(iq,Xk,i_T_grp,NG,l_bs_tddft_wf_in_
            do jp_spinor=1,n_spinor
              do ifft=1,fft_size
                rhotwr_p(ifft)=rhotwr_p(ifft)+                        &
-               & cmplx(F_xc_mat(ifft,i_spinor_y,j_spinor_y,ip_spinor,jp_spinor)* &
+               & cmplx(F_xc_mat(ifft,i_spinor_y,j_spinor_y,ip_spinor,jp_spinor,1,1)* &
 	       & WF_symm1_p(ifft,ip_spinor)*conjg(WF_symm2_p(ifft,jp_spinor)),kind=DP)
              enddo
            enddo
          enddo
-         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,i_spinor,j_spinor))
+         call perform_fft_3d(qs,rhotwr_p,BS_T_grp(i_T_grp)%O_tddft_R(:,i_T_el,i_spinor,j_spinor,1,1))
          !
        enddo
      enddo

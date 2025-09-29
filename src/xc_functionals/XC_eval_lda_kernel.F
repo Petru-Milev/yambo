@@ -23,7 +23,7 @@ subroutine XC_eval_lda_kernel(v1rho,v2rho2)
  !
  if (n_spin==1) then
    do ifft=1,fft_size
-     F_xc(ifft,1,1) = F_xc(ifft,1,1) + real(v2rho2(1,ifft),SP)
+     F_xc(ifft,1,1,1,1) = F_xc(ifft,1,1,1,1) + real(v2rho2(1,ifft),SP)
    enddo
  endif
  !
@@ -33,7 +33,7 @@ subroutine XC_eval_lda_kernel(v1rho,v2rho2)
      do is1 = 1,n_sp_pol
        do is2 = 1,n_sp_pol
          is_xc = xc_spin_map1(is1,is2)
-         forall(ifft=1:fft_size) F_xc(ifft,is1,is2) = F_xc(ifft,is1,is2) + real(v2rho2(is_xc,ifft),SP)
+         forall(ifft=1:fft_size) F_xc(ifft,is1,is2,1,1) = F_xc(ifft,is1,is2,1,1) + real(v2rho2(is_xc,ifft),SP)
        enddo
      enddo
    else
@@ -43,11 +43,11 @@ subroutine XC_eval_lda_kernel(v1rho,v2rho2)
        if(mod_mag< 1.E-8_SP) one_over_magn=0._SP
        if(mod_mag>=1.E-8_SP) one_over_magn=1._SP/mod_mag
        ! Here 1,2 means -+ and 21 +- (or viceversa, to be checked)
-       F_xc(ifft,1,2) = F_xc(ifft,1,2) + real(v1rho(1,ifft)-v1rho(2,ifft),SP)*one_over_magn
-       F_xc(ifft,2,1) = F_xc(ifft,2,1) + real(v1rho(1,ifft)-v1rho(2,ifft),SP)*one_over_magn
+       F_xc(ifft,1,2,1,1) = F_xc(ifft,1,2,1,1) + real(v1rho(1,ifft)-v1rho(2,ifft),SP)*one_over_magn
+       F_xc(ifft,2,1,1,1) = F_xc(ifft,2,1,1,1) + real(v1rho(1,ifft)-v1rho(2,ifft),SP)*one_over_magn
      enddo
      ! Here 1,1 means -- and 22 ++ (or viceversa, to be checked)
-     F_xc(:,2,2)=F_xc(:,1,1)
+     F_xc(:,2,2,1,1)=F_xc(:,1,1,1,1)
    endif
  endif
  !
@@ -55,7 +55,7 @@ subroutine XC_eval_lda_kernel(v1rho,v2rho2)
    do is1 = 1,n_spinor
      do is2 = 1,n_spinor
        is_xc = xc_spin_map1(is1,is2)
-       forall(ifft=1:fft_size) F_xc(ifft,is1,is2) = F_xc(ifft,is1,is2) + real(v2rho2(is_xc,ifft),SP)
+       forall(ifft=1:fft_size) F_xc(ifft,is1,is2,1,1) = F_xc(ifft,is1,is2,1,1) + real(v2rho2(is_xc,ifft),SP)
      enddo
    enddo
  endif

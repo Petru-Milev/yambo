@@ -32,7 +32,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
 &                         xc_spin,xc_spin_map1, &
 &                         XC_HYB_GGA_XC_GAUPBE,XC_FACTOR,&
 &                         XC_FAMILY_LDA,XC_FAMILY_GGA,XC_FAMILY_HYB_GGA,&
-&                         XC_GGA_X_PBE, XC_GGA_C_PBE
+&                         XC_GGA_X_PBE, XC_GGA_C_PBE, n_xc 
  use xc_f03_lib_m,   ONLY:xc_f03_lda_exc,xc_f03_lda_vxc,xc_f03_lda_fxc, &
 &                         xc_f03_gga_exc,xc_f03_gga_vxc,xc_f03_gga_fxc
  use interfaces,     ONLY:el_density_and_current,el_magnetization
@@ -103,6 +103,15 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  !
  EvaluateDGradient = any((fnctl(:)%family==XC_FAMILY_GGA).or.any(fnctl(:)%family==XC_FAMILY_HYB_GGA))
  !
+ if (fnctl(1)%family==XC_FAMILY_LDA) then
+   n_xc = 1 
+ else if (fnctl(1)%family==XC_FAMILY_GGA) then 
+   n_xc = 5   
+ else
+   n_xc = 1  
+   call msg('s',' Not a LDA or GGA functional n_xc set to 1 (LDA).') 
+ endif 
+         !        
  !==========================
  ! Electronic/spin density 
  !==========================
@@ -326,7 +335,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
          !if( (.not.l_BS_magnons) .or. n_spinor==2) then
            call xc_f03_gga_fxc(fnctl(ixc)%conf, size_IPL, spin_rho_DP(1,1), sigma(1,1), v2rho2(1,1), v2rhosigma(1,1), v2sigma2(1,1))
            ! Yambo internal for Kxc
-           call XC_eval_gga_kernel(v1rho,v1sigma,v2rho2,v2rhosigma,v2sigma2)
+           call XC_eval_gga_kernel(drho, v2rho2,v2rhosigma,v2sigma2) !returns F_xc object 
          !endif
      end select
    end if
@@ -341,7 +350,7 @@ subroutine XC_libxc_driver(en,Xk,FUNCTIONAL,ORDER,EXX_FRACTION,EXX_SCREENING)
  if (l_Fxc_from_Vxc.and.ORDER==2) then
    do ifft=1,fft_size
      if (abs(spin_rho_DP(1,ifft))<1.E-7_DP) cycle
-     F_xc(ifft,1,1)=real( real(V_xc_pert(ifft,1)-V_xc(ifft,1),DP)/(spin_rho_DP(1,ifft)*(PERT_FAC-1._DP)),SP)
+     F_xc(ifft,1,1,1,1)=real( real(V_xc_pert(ifft,1)-V_xc(ifft,1),DP)/(spin_rho_DP(1,ifft)*(PERT_FAC-1._DP)),SP)
    enddo
  endif
  !

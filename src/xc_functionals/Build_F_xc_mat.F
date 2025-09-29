@@ -7,18 +7,19 @@
 !
 subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
  !
+ ! TO DO to rewrite the Build_F_xc_mat for LDA terms to include new definitions of Fxc and Fxcmat
  use pars,           ONLY:SP,cZERO,cI
  use BS,             ONLY:l_BS_magnons
  use FFT_m,          ONLY:fft_size
  use electrons,      ONLY:n_spin,n_spinor,n_sp_pol
- use xc_functionals, ONLY:magn
+ use xc_functionals, ONLY:magn, n_xc, f_xc_mat_xyz_dim  
  use vec_operate,    ONLY:v_norm
  !
  implicit none
  !
  real(SP),    intent(in)  :: V_xc(fft_size,n_spin)
- real(SP),    intent(in)  :: F_xc(fft_size,n_spin,n_spin)
- complex(SP), intent(out) :: F_xc_mat(fft_size,n_spin,n_spin,n_spin,n_spin)
+ real(SP),    intent(in)  :: F_xc(fft_size,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim)
+ complex(SP), intent(out) :: F_xc_mat(fft_size,n_spin,n_spin,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim) !TO DO ADD THE GGA TERMS AND XYZ
  !
  !  Work space
  !
@@ -27,6 +28,15 @@ subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
  &              Fxc_rho2(fft_size),Fxc_mag2(fft_size),Fxc_rhom(fft_size),Vxc_mag(fft_size)
  !
  F_xc_mat=cZERO
+ !
+ ! F_xc_mat ( : , : , : , :, :, 1,   :) = LDA
+ ! F_xc_mat ( : , : , : , :, :, 2:5, :) = GGA
+ ! 
+ ! F_xc_mat ( : , : , : , :, :, :, 1) = x ! For LDA only this dimension is present 
+ ! F_xc_mat ( : , : , : , :, :, :, 2) = y
+ ! F_xc_mat ( : , : , : , :, :, :, 3) = z
+ !
+ ! For spin components (only spin components F_xc(:, spin, spin, spin, spin, :, :) are repesented below. 
  !
  ! F_xc_mat ( 1 , 1 , 1 , 1 ) = up up up up  (opt)
  !
@@ -52,18 +62,23 @@ subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
  !
  ! Magnetization, V_xc + and -
  !
+ 
+ if (n_xc==1) then
+   !
+   ! LDA case
+   !
  if (n_spin==1) then
    !
-   F_xc_mat(:,1,1,1,1)=F_xc(:,1,1)
-   !
+   F_xc_mat(:,1,1,1,1,1,1)=F_xc(:,1,1,1,1)
+   ! 
  else if (n_sp_pol==2) then
    !
    if (.not.l_BS_magnons) then
      !
-     F_xc_mat(:,1,1,1,1)= F_xc(:,1,1)
-     F_xc_mat(:,1,1,2,2)= F_xc(:,1,2)
-     F_xc_mat(:,2,2,1,1)= F_xc(:,2,1)
-     F_xc_mat(:,2,2,2,2)= F_xc(:,2,2)
+     F_xc_mat(:,1,1,1,1,1,1)= F_xc(:,1,1,1,1)
+     F_xc_mat(:,1,1,2,2,1,1)= F_xc(:,1,2,1,1)
+     F_xc_mat(:,2,2,1,1,1,1)= F_xc(:,2,1,1,1)
+     F_xc_mat(:,2,2,2,2,1,1)= F_xc(:,2,2,1,1)
      !
    else
      !
@@ -83,10 +98,10 @@ subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
      !F_xc_mat(:,2,1,1,2)= F_xc(:,2,1) !2*Vxc_mag*magn_inv
      !F_xc_mat(:,2,1,2,1)= cZERO
      !
-     F_xc_mat(:,1,2,1,2)= F_xc(:,1,1)
-     F_xc_mat(:,1,2,2,1)= F_xc(:,1,2)
-     F_xc_mat(:,2,1,1,2)= F_xc(:,2,1)
-     F_xc_mat(:,2,1,2,1)= F_xc(:,2,2)
+     F_xc_mat(:,1,2,1,2,1,1)= F_xc(:,1,1,1,1)
+     F_xc_mat(:,1,2,2,1,1,1)= F_xc(:,1,2,1,1)
+     F_xc_mat(:,2,1,1,2,1,1)= F_xc(:,2,1,1,1)
+     F_xc_mat(:,2,1,2,1,1,1)= F_xc(:,2,2,1,1)
      !
    endif
    !
@@ -103,32 +118,48 @@ subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
    !
    Vxc_mag(:)  =(V_xc(:,1)-V_xc(:,2))/2._SP
    !
-   Fxc_rho2(:) =(F_xc(:,1,1)+F_xc(:,2,2)+F_xc(:,1,2)+F_xc(:,2,1))/4._SP
-   Fxc_mag2(:) =(F_xc(:,1,1)+F_xc(:,2,2)-F_xc(:,1,2)-F_xc(:,2,1))/4._SP-Vxc_mag*magn_inv*2._SP  ! This also includes the term 2*Vxc_mag/mod_magn
-   Fxc_rhom(:) =(F_xc(:,1,1)-F_xc(:,2,2))/4._SP
+   Fxc_rho2(:) =(F_xc(:,1,1,1,1)+F_xc(:,2,2,1,1)+F_xc(:,1,2,1,1)+F_xc(:,2,1,1,1))/4._SP
+   Fxc_mag2(:) =(F_xc(:,1,1,1,1)+F_xc(:,2,2,1,1)-F_xc(:,1,2,1,1)-F_xc(:,2,1,1,1))/4._SP-Vxc_mag*magn_inv*2._SP  ! This also includes the term 2*Vxc_mag/mod_magn
+   Fxc_rhom(:) =(F_xc(:,1,1,1,1)-F_xc(:,2,2,1,1))/4._SP
    !
-   F_xc_mat(:,1,1,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2+Vxc_mag*magn_inv+2*Fxc_rhom+Fxc_rho2   !  (opt)
-   F_xc_mat(:,1,1,2,2) =-(Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2-Vxc_mag*magn_inv           +Fxc_rho2   !  (opt)
-   F_xc_mat(:,2,2,1,1) =-(Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2-Vxc_mag*magn_inv           +Fxc_rho2   !  (opt)
-   F_xc_mat(:,2,2,2,2) = (Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2+Vxc_mag*magn_inv-2*Fxc_rhom+Fxc_rho2   !  (opt)
+   F_xc_mat(:,1,1,1,1,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2+Vxc_mag*magn_inv+2*Fxc_rhom+Fxc_rho2   !  (opt)
+   F_xc_mat(:,1,1,2,2,1,1) =-(Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2-Vxc_mag*magn_inv           +Fxc_rho2   !  (opt)
+   F_xc_mat(:,2,2,1,1,1,1) =-(Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2-Vxc_mag*magn_inv           +Fxc_rho2   !  (opt)
+   F_xc_mat(:,2,2,2,2,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*magn_versor(:,3)**2+Vxc_mag*magn_inv-2*Fxc_rhom+Fxc_rho2   !  (opt)
    !
-   F_xc_mat(:,1,2,1,2) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)-cI*magn_versor(:,2))**2                      !  (mag)
-   F_xc_mat(:,1,2,2,1) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)**2+magn_versor(:,2)**2)+2*Vxc_mag*magn_inv   !  (mag)
-   F_xc_mat(:,2,1,1,2) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)**2+magn_versor(:,2)**2)+2*Vxc_mag*magn_inv   !  (mag)
-   F_xc_mat(:,2,1,2,1) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)+cI*magn_versor(:,2))**2                      !  (mag)
+   F_xc_mat(:,1,2,1,2,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)-cI*magn_versor(:,2))**2                      !  (mag)
+   F_xc_mat(:,1,2,2,1,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)**2+magn_versor(:,2)**2)+2*Vxc_mag*magn_inv   !  (mag)
+   F_xc_mat(:,2,1,1,2,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)**2+magn_versor(:,2)**2)+2*Vxc_mag*magn_inv   !  (mag)
+   F_xc_mat(:,2,1,2,1,1,1) = (Fxc_mag2+Vxc_mag*magn_inv)*(magn_versor(:,1)+cI*magn_versor(:,2))**2                      !  (mag)
    !
    ! TO DO !!
    !
-   F_xc_mat(:,1,1,1,2) = cZERO     !  (mix)
-   F_xc_mat(:,1,1,2,1) = cZERO     !  (mix)
-   F_xc_mat(:,1,2,1,1) = cZERO     !  (mix)
-   F_xc_mat(:,2,1,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,1,1,1,2,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,1,1,2,1,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,1,2,1,1,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,2,1,1,1,1,1) = cZERO     !  (mix)
    !
-   F_xc_mat(:,1,2,2,2) = cZERO     !  (mix)
-   F_xc_mat(:,2,1,2,2) = cZERO     !  (mix)
-   F_xc_mat(:,2,2,1,2) = cZERO     !  (mix)
-   F_xc_mat(:,2,2,2,1) = cZERO     !  (mix)
+   F_xc_mat(:,1,2,2,2,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,2,1,2,2,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,2,2,1,2,1,1) = cZERO     !  (mix)
+   F_xc_mat(:,2,2,2,1,1,1) = cZERO     !  (mix)
    !
  endif
  !
+ else if (n_xc == 5) then 
+  ! ! GGA case
+
+  if (n_spin == 1) then 
+  !LDA TERM
+  !F_xc_mat(fft_size,n_spin,n_spin,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim)
+  F_xc_mat(:,1,1,1,1,1,1)=F_xc(:,1,1,1,1)
+
+  !GGA TERM 1 
+  F_xc_mat(:,1,1,1,1,2,:)=F_xc(:,1,1,2,:)
+  else 
+   call msg('s','Build_F_xc_mat','GGA with spin not implemented yet')
+  endif  
+ end if 
+
+
 end subroutine Build_F_xc_mat

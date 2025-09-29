@@ -193,13 +193,11 @@ module BS
    !
    ! TDDFT Oscillators
    !
-   complex(SP), allocatable :: O_tddft_L(:,:,:,:) ! TO DO to refactor into O_tddft_lda_1_L
-   complex(SP), allocatable :: O_tddft_R(:,:,:,:) ! TO DO to refactor ... 
-   complex(SP), allocatable DEV_ATTR :: O_tddft_L_d(:,:,:,:)
+   complex(SP), allocatable :: O_tddft_L(:,:,:,:,:,:) ! TO DO !%O_tddft_L(:,i_T_el,i_spinor,j_spinor, n_xc, f_xc_mat_xyz_dim) 
+   complex(SP), allocatable :: O_tddft_R(:,:,:,:,:,:) ! TO DO to refactor in LDA subroutines  
+   complex(SP), allocatable DEV_ATTR :: O_tddft_L_d(:,:,:,:) 
    complex(SP), allocatable DEV_ATTR :: O_tddft_R_d(:,:,:,:)
    !TO DO to alloc other oscillators for the gga functionals 
-   complex(SP), allocatable :: O_tddft_gga_1_L(:,:,:,:) !First term of the GGA part of the collisions. See notes ... 
-   complex(SP), allocatable :: O_tddft_gga_1_R(:,:,:,:) 
    !
  end type BS_T_group
  !

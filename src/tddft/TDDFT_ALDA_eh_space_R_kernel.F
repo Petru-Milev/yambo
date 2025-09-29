@@ -94,7 +94,7 @@ function TDDFT_ALDA_eh_space_R_kernel(is,os,isp,osp,tddft_wf,mode) result(H_x)
  call WF_apply_symm(osp_loc,WF_symm2_p)
  !
  if( n_spin==1 ) then
-   rhotwr2_p(:)=F_xc_mat(:,1,1,1,1)*WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1))
+   rhotwr2_p(:)=F_xc_mat(:,1,1,1,1,1,1)*WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1))
  endif
  !
  if(n_sp_pol==2) then
@@ -106,7 +106,7 @@ function TDDFT_ALDA_eh_space_R_kernel(is,os,isp,osp,tddft_wf,mode) result(H_x)
    is_yambo=os(4)
    os_yambo=is(4)
    ! To check/fix the spinorial version 
-   rhotwr2_p(:)=F_xc_mat(:,is_yambo,os_yambo,isp(4),osp(4))*WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1))
+   rhotwr2_p(:)=F_xc_mat(:,is_yambo,os_yambo,isp(4),osp(4),1,1)*WF_symm1_p(:,1)*conjg(WF_symm2_p(:,1))
  endif
  !
  if(n_spinor==2) then
@@ -120,7 +120,7 @@ function TDDFT_ALDA_eh_space_R_kernel(is,os,isp,osp,tddft_wf,mode) result(H_x)
            do ifft=1,fft_size
              irhotw=ifft+(i_spinor-1)*fft_size+(j_spinor-1)*n_spinor*fft_size
              rhotwr2_p(irhotw)=rhotwr2_p(irhotw)+                        &
-             & F_xc_mat(ifft,i_spinor_y,j_spinor_y,ip_spinor,jp_spinor)* &
+             & F_xc_mat(ifft,i_spinor_y,j_spinor_y,ip_spinor,jp_spinor,1,1)* &
 	     & WF_symm1_p(ifft,ip_spinor)*conjg(WF_symm2_p(ifft,jp_spinor))
            enddo
          enddo

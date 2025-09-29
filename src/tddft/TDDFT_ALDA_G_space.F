@@ -14,7 +14,7 @@ subroutine TDDFT_ALDA_G_space(E,k)
  use electrons,     ONLY:levels,n_spin
  use R_lattice,     ONLY:bz_samp,G_m_G
  use wave_func,     ONLY:WF
- use xc_functionals,ONLY:V_xc,F_xc,magn,XC_potential_driver
+ use xc_functionals,ONLY:V_xc,F_xc,magn,XC_potential_driver, n_xc, f_xc_mat_xyz_dim
  use global_XC,     ONLY:WF_xc_functional,WF_kind
  use interfaces,    ONLY:WF_load,WF_free,eval_G_minus_G
  !
@@ -48,7 +48,7 @@ subroutine TDDFT_ALDA_G_space(E,k)
  !
  ! ALDA functional
  !
- YAMBO_ALLOC(F_xc,(fft_size,n_spin,n_spin))
+ YAMBO_ALLOC(F_xc,(fft_size,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim))
  YAMBO_ALLOC(V_xc,(fft_size,n_spin))
  V_xc=0._SP
  YAMBO_ALLOC(F_xc_DP,(fft_size))
@@ -57,7 +57,7 @@ subroutine TDDFT_ALDA_G_space(E,k)
  endif
  call XC_potential_driver(E,k,WF_kind,WF_xc_functional,2)
  do i1=1,fft_size
-   F_xc_DP(i1)=sum(cmplx(F_xc(i1,:,:),kind=DP))
+   F_xc_DP(i1)=sum(cmplx(F_xc(i1,:,:,1,1),kind=DP))
  enddo
  !
  ! need to reset the plan to do a BACKWARD FFT (R->G)

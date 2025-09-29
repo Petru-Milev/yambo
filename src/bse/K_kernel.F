@@ -40,7 +40,7 @@ subroutine K_kernel(iq,Ken,Xk,q,X,Xw,W_bss)
  use IO_m,          ONLY:REP,OP_WR,RD,WR_CL,OP_APP,deliver_IO_error_message,WR
  use TDDFT,         ONLY:FXC_K_diagonal,F_xc_gspace,FXC_n_g_corr,io_BS_Fxc, &
 &                        FXC_mode,tddft_wf_t,l_Fxc_from_Vxc
- use xc_functionals,ONLY:V_xc,F_xc,F_xc_mat,magn,XC_potential_driver
+ use xc_functionals,ONLY:V_xc,F_xc,F_xc_mat,magn,XC_potential_driver, n_xc, f_xc_mat_xyz_dim
  use global_XC,     ONLY:WF_xc_functional,WF_kind,WF_exx_fraction
  use wave_func,     ONLY:WF
  use openmp,        ONLY:OPENMP_update,master_thread
@@ -332,7 +332,12 @@ subroutine K_kernel(iq,Ken,Xk,q,X,Xw,W_bss)
    YAMBO_ALLOC(tddft_wf%WF_symm1,(fft_size,n_spinor))
    YAMBO_ALLOC(tddft_wf%WF_symm2,(fft_size,n_spinor))
    !
-   YAMBO_ALLOC(F_xc,(fft_size,n_spin,n_spin))
+   if (n_xc == 1) then
+   f_xc_mat_xyz_dim = 1  
+   else if (n_xc == 5) then 
+   f_xc_mat_xyz_dim = 3
+   end if 
+   YAMBO_ALLOC(F_xc,(fft_size,n_spin,n_spin, n_xc, f_xc_mat_xyz_dim)) 
    if(l_BS_magnons .or. n_spinor==2 .or. l_Fxc_from_Vxc) then
      YAMBO_ALLOC(V_xc,(fft_size,n_spin))
      V_xc=0._SP
@@ -342,7 +347,10 @@ subroutine K_kernel(iq,Ken,Xk,q,X,Xw,W_bss)
      YAMBO_ALLOC(magn,(fft_size,3))
    endif
    call XC_potential_driver(Ken,Xk,WF_kind,WF_xc_functional,2)
-   YAMBO_ALLOC(F_xc_mat,(fft_size,n_spin,n_spin,n_spin,n_spin))
+   !TO CHECK how to import here a check on the type of functional 
+   !if lda 
+   !f_xc_mat_xyz_dim
+   YAMBO_ALLOC(F_xc_mat,(fft_size,n_spin,n_spin,n_spin,n_spin,n_xc,f_xc_mat_xyz_dim))
    call Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
    YAMBO_FREE(F_xc)
    if(l_BS_magnons .or. n_spinor==2 .or. l_Fxc_from_Vxc) then

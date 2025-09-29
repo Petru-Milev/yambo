@@ -71,7 +71,7 @@ subroutine TDDFT_ALDA_lower_cutoff(FXC_mode)
        endif
      endif
      !
-     F_xc_DP=cmplx(F_xc_mat(:,isp1,isp2,isp3,isp4),kind=DP)
+     F_xc_DP=cmplx(F_xc_mat(:,isp1,isp2,isp3,isp4, 1,1),kind=DP)
      !
      ! FFT call: BACKWARD (R->G)
      !
@@ -136,7 +136,7 @@ subroutine TDDFT_ALDA_lower_cutoff(FXC_mode)
      call fft_3d(F_xc_DP_reduced,fft_dim,1)
 #endif
      !
-     F_xc_mat(:,isp1,isp2,isp3,isp4) = real(F_xc_DP_reduced,SP)
+     F_xc_mat(:,isp1,isp2,isp3,isp4,1,1) = real(F_xc_DP_reduced,SP)
      !
    enddo
    enddo

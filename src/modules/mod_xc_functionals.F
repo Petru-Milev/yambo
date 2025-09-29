@@ -15,19 +15,20 @@ module xc_functionals
  implicit none
  !
  integer  :: xc_spin(2)
- integer, allocatable :: xc_spin_map1(:,:)
- integer, allocatable :: xc_spin_map2(:,:,:)
+ integer  :: n_xc = 1, f_xc_mat_xyz_dim = 1   ! n_xc - This will be set in XC_libxc_driver. 1 for LDA, 5 for GGA ; 1 for LDA 3 for GGA 
+ integer, allocatable :: xc_spin_map1(:,:) 
+ integer, allocatable :: xc_spin_map2(:,:,:) 
  !
  integer,  public:: GS_xc_KIND
  integer,  public:: GS_xc_FUNCTIONAL
  real(SP), public:: GS_exx_FRACTION, GS_exx_SCREENING
  real(SP), public:: E_xc_val=0.0
  real(SP), public, allocatable:: magn(:,:)
- real(SP), public, allocatable:: F_xc(:,:,:)
+ real(SP), public, allocatable:: F_xc(:,:,:, :, :) ! F_xc(fft, n_spin, n_spin, n_xc, xyz) 
  real(SP), public, allocatable:: V_xc(:,:)
  real(SP), public, allocatable:: E_xc(:)
  !
- complex(SP), allocatable:: F_xc_mat(:,:,:,:,:)
+ complex(SP), allocatable:: F_xc_mat(:,:,:,:,:,:,:) !F_xc_mat(fft_size, n_spin, n_spin, n_spin, n_xc, xyz) 
  !
  ! Messagging
  !
