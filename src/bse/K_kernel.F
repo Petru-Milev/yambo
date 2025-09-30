@@ -350,7 +350,8 @@ subroutine K_kernel(iq,Ken,Xk,q,X,Xw,W_bss)
    !TO CHECK how to import here a check on the type of functional 
    !if lda 
    !f_xc_mat_xyz_dim
-   YAMBO_ALLOC(F_xc_mat,(fft_size,n_spin,n_spin,n_spin,n_spin,n_xc,f_xc_mat_xyz_dim))
+   !Y_AM_BO_AL_L_OC(F_xc_mat,(fft_size,n_spin,n_spin,n_spin,n_spin,n_xc,f_xc_mat_xyz_dim))
+   allocate(F_xc_mat (fft_size,n_spin,n_spin,n_spin,n_spin,n_xc,f_xc_mat_xyz_dim))
    call Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
    YAMBO_FREE(F_xc)
    if(l_BS_magnons .or. n_spinor==2 .or. l_Fxc_from_Vxc) then

@@ -14,6 +14,7 @@ subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
  use electrons,      ONLY:n_spin,n_spinor,n_sp_pol
  use xc_functionals, ONLY:magn, n_xc, f_xc_mat_xyz_dim  
  use vec_operate,    ONLY:v_norm
+ use com,            ONLY:msg
  !
  implicit none
  !
@@ -157,7 +158,7 @@ subroutine Build_F_xc_mat(V_xc,F_xc,F_xc_mat)
   !GGA TERM 1 
   F_xc_mat(:,1,1,1,1,2,:)=F_xc(:,1,1,2,:)
   else 
-   call msg('s','Build_F_xc_mat','GGA with spin not implemented yet')
+   call msg('s','Build_F_xc_mat. GGA with spin not implemented yet')
   endif  
  end if 
 
